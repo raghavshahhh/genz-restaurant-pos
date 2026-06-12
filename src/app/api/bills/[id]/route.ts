@@ -11,7 +11,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    
+
     // Validate input with Zod
     const validatedData = updateBillSchema.parse(body);
     const { status, paymentMethod } = validatedData;
@@ -41,7 +41,7 @@ export async function PATCH(
 
     // Update bill
     const updatedBill = await prisma.bill.update({
-      where: { id },
+      where: { id: id.toString() },
       data: { 
         status: 'PAID',
         paymentMethod: paymentMethod || null,
