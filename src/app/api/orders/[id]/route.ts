@@ -1,23 +1,56 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: params.id },
+      include: {
+        table: true,
+        items: {
+          include: {
+            menuItem: true
+          }
+        }
+      }
+    });
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    return NextResponse.json(order);
+  } catch (error) {
+    console.error('Error fetching order:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const body = await request.json();
-    
-    if (!body.status) {
-      return NextResponse.json({ error: 'Status is required' }, { status: 400 });
-    }
+    const { status, paymentStatus } = body;
 
     const order = await prisma.order.update({
-      where: { id: parseInt(id) },
-      data: { status: body.status }
+      where: { id: params.id },
+      data: {
+        ...(status && { status }),
+        ...(paymentStatus && { paymentStatus })
+      },
+      include: {
+        table: true,
+        items: {
+          include: {
+            menuItem: true
+          }
+        }
+      }
     });
-    
+
     return NextResponse.json(order);
   } catch (error) {
     console.error('Error updating order:', error);

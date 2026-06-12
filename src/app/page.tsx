@@ -1,6 +1,12 @@
 import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-config';
+import { Dashboard } from '@/components/dashboard/dashboard';
 
-export default function RootPage() {
-  // Redirect root to POS login
-  redirect('/pos/tables');
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect('/auth/login');
+  }
+  return <Dashboard />;
 }

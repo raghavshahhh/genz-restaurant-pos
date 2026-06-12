@@ -1,29 +1,55 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+// GET single bill by ID
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const bill = await prisma.bill.findUnique({
+      where: { id: params.id },
+      include: {
+        order: {
+          include: {
+            items: {
+              include: {
+                menuItem: true
+              }
+            }
+          }
+        },
+        table: true
+      }
+    });
+
+    if (!bill) {
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(bill);
+  } catch (error) {
+    console.error('Error fetching bill:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// PATCH update bill status (mark as paid)
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
     const body = await request.json();
-    
-    if (!body.paymentMethod) {
-      return NextResponse.json({ error: 'Payment method is required' }, { status: 400 });
-    }
+    const { status, paymentMethod } = body;
 
     const bill = await prisma.bill.update({
-      where: { id: parseInt(id) },
-      data: { 
-        status: 'paid',
-        paymentMethod: body.paymentMethod
+      where: { id: params.id },
+      data: {
+        status,
+        paymentMethod,
+        paidAt: status === 'PAID' ? new Date() : null
       }
-    });
-    
-    await prisma.order.update({
-      where: { id: bill.orderId },
-      data: { paymentStatus: 'paid' }
     });
 
     return NextResponse.json(bill);

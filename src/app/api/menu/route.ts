@@ -1,17 +1,20 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    
+    let whereClause: any = category ? { category } : {};
+    
     const menuItems = await prisma.menuItem.findMany({
-      orderBy: [
-        { category: 'asc' },
-        { name: 'asc' }
-      ]
+      where: whereClause,
+      orderBy: [{ category: 'asc' }, { name: 'asc' }]
     });
     return NextResponse.json(menuItems);
   } catch (error) {
-    console.error('Error fetching menu items:', error);
+    console.error('Error fetching menu:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -19,20 +22,16 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, description, price, category, isAvailable, imageUrl } = body;
-    
-    if (!name || price === undefined || !category) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
+    const { name, category, price, imageUrl, available, restaurantId } = body;
 
     const menuItem = await prisma.menuItem.create({
       data: {
         name,
-        description,
-        price: parseFloat(price),
         category,
-        isAvailable: isAvailable ?? true,
-        imageUrl
+        price,
+        imageUrl: imageUrl || '',
+        available: available !== false,
+        restaurantId: restaurantId || 'genz-restaurant'
       }
     });
     return NextResponse.json(menuItem, { status: 201 });

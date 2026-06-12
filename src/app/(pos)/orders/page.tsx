@@ -1,17 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 export default function OrdersPage() {
   const [tables, setTables] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [categories, setCategories] = useState<string[]>(['All']);
   
-  const [selectedTable, setSelectedTable] = useState<number | null>(null);
-  const [orderItems, setOrderItems] = useState<{menuItemId: number, quantity: number, specialInstructions: string}[]>([]);
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [orderItems, setOrderItems] = useState<{menuItemId: string, quantity: number, specialInstructions: string}[]>([]);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -19,26 +29,42 @@ export default function OrdersPage() {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [tablesRes, menuRes, ordersRes] = await Promise.all([
         fetch('/api/tables'),
         fetch('/api/menu'),
-        fetch('/api/orders?status=pending,preparing,ready')
+        fetch('/api/orders?status=PENDING,PREPARING,READY,SERVED')
       ]);
       
+      if (!tablesRes.ok || !menuRes.ok || !ordersRes.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
       const tablesData = await tablesRes.json();
       const menuData = await menuRes.json();
       const ordersData = await ordersRes.json();
       
       setTables(tablesData);
-      setMenuItems(menuData.filter((item: any) => item.isAvailable));
+      setMenuItems(menuData);
       setActiveOrders(ordersData);
+
+      // Extract unique categories from menu items
+      const uniqueCategories = ['All', ...Array.from(new Set(menuData.map((item: any) => item.category)))];
+      setCategories(uniqueCategories as string[]);
+
     } catch (err) {
+      setError('Failed to load data. Please try again.');
       console.error('Error fetching data:', err);
+      toast.error('Failed to load orders data');
     } finally {
       setLoading(false);
     }
   };
+
+  const filteredMenuItems = selectedCategory === 'All' 
+    ? menuItems 
+    : menuItems.filter(item => item.category === selectedCategory);
 
   const handleAddItem = (menuItem: any) => {
     const existing = orderItems.find(item => item.menuItemId === menuItem.id);
@@ -53,7 +79,7 @@ export default function OrdersPage() {
     }
   };
 
-  const handleRemoveItem = (menuItemId: number) => {
+  const handleRemoveItem = (menuItemId: string) => {
     const existing = orderItems.find(item => item.menuItemId === menuItemId);
     if (existing && existing.quantity > 1) {
       setOrderItems(orderItems.map(item => 
@@ -67,109 +93,179 @@ export default function OrdersPage() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedTable || orderItems.length === 0) return;
-    
+    if (!selectedTable || orderItems.length === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
-      await fetch('/api/orders', {
+      const response = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tableId: selectedTable,
-          items: orderItems
+          items: orderItems,
+          customerName: customerName || 'Walk-in Customer',
+          customerPhone: customerPhone || null
         })
       });
-      
+
+      if (!response.ok) {
+        throw new Error('Failed to place order');
+      }
+
       // Reset form
       setSelectedTable(null);
       setOrderItems([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setShowCustomerForm(false);
+      toast.success('Order placed successfully! 🎉');
       await fetchData();
     } catch (err) {
+      setError('Failed to place order. Please try again.');
       console.error('Error placing order:', err);
+      toast.error('Failed to place order');
+    } finally {
+      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleCompleteOrder = async (orderId: number) => {
+  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+    setLoading(true);
     try {
-      await fetch(`/api/orders/${orderId}`, {
+      const response = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed' })
+        body: JSON.stringify({ status })
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to update order status');
+      }
+
+      toast.success(`Order status updated to ${status}`);
       await fetchData();
     } catch (err) {
-      console.error('Error completing order:', err);
+      setError('Failed to update order status. Please try again.');
+      console.error('Error updating order status:', err);
+      toast.error('Failed to update order status');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getMenuItemPrice = (id: number) => {
+  const getMenuItemPrice = (id: string) => {
     const item = menuItems.find(m => m.id === id);
     return item ? item.price : 0;
   };
-  
-  const getMenuItemName = (id: number) => {
+
+  const getMenuItemName = (id: string) => {
     const item = menuItems.find(m => m.id === id);
     return item ? item.name : 'Unknown';
   };
 
   const currentTotal = orderItems.reduce((sum, item) => sum + (getMenuItemPrice(item.menuItemId) * item.quantity), 0);
 
-  if (loading) {
+  if (loading && tables.length === 0) {
     return (
-      <div className="flex h-[600px] items-center justify-center">
-        <div className="animate-spin rounded-full border-4 border-primary border-t-transparent h-12 w-12"></div>
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full border-4 border-violet-600 border-t-transparent h-12 w-12 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading your ordering station...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center">
+        <h2 className="text-xl font-bold mb-4">Error</h2>
+        <p className="text-red-500">{error}</p>
+        <Button onClick={() => { setError(null); fetchData(); }} variant="gradient" className="mt-4">
+          Try Again
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="pb-4">
-        <h1 className="text-2xl font-bold">Take Order</h1>
-        <p className="text-sm text-gray-500">
-          Create new orders and manage active ones
+    <div className="space-y-6 animate-fade-in">
+      <div className="pb-4 border-b border-gray-200">
+        <h1 className="text-3xl font-black text-gray-900">Take Order</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Create new orders and manage active ones with ease
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card className="p-4">
-            <h2 className="text-lg font-semibold mb-4">1. Select Table</h2>
-            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="p-5 border-2 border-gray-100 shadow-sm rounded-2xl">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-sm">1</span>
+              Select Table
+            </h2>
+            <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3">
               {tables.map(table => (
-                <Button
+                <button
                   key={table.id}
                   onClick={() => setSelectedTable(table.id)}
-                  variant={selectedTable === table.id ? "outline" : "outline"}
-                  className={`p-3 rounded-lg border-2 text-center transition-colors ${
+                  disabled={table.status === 'OCCUPIED'}
+                  className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${
                     selectedTable === table.id
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-gray-200 hover:border-primary/50 text-gray-700'
+                      ? 'border-violet-600 bg-gradient-to-br from-violet-600 to-pink-600 text-white shadow-lg shadow-violet-500/30 transform scale-105'
+                      : table.status === 'OCCUPIED'
+                        ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                        : 'border-gray-200 hover:border-violet-300 hover:bg-violet-50 text-gray-700'
                   }`}
                 >
-                  <span className="block font-bold">T{table.number}</span>
+                  <span className="block font-bold text-lg">T{table.number}</span>
                   <span className="text-xs opacity-80">{table.capacity} pax</span>
-                </Button>
+                </button>
               ))}
             </div>
           </Card>
 
-          <Card className="p-4">
-            <h2 className="text-lg font-semibold mb-4">2. Select Items</h2>
-            {menuItems.length === 0 ? (
-              <p className="text-gray-500">No available menu items found.</p>
+          <Card className="p-5 border-2 border-gray-100 shadow-sm rounded-2xl">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-sm">2</span>
+              Select Items
+            </h2>
+            
+            {/* Category Filter Tabs */}
+            <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-2">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                    selectedCategory === category
+                      ? 'bg-gradient-to-r from-violet-600 to-pink-600 text-white shadow-md shadow-violet-500/20'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+
+            {filteredMenuItems.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No available menu items found in this category.</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {menuItems.map(item => (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2">
+                {filteredMenuItems.map(item => (
                   <button
                     key={item.id}
                     onClick={() => handleAddItem(item)}
-                    className="p-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-primary/5 text-left transition-colors flex flex-col h-full justify-between"
+                    className="p-4 rounded-xl border-2 border-gray-100 hover:border-violet-300 hover:bg-violet-50 text-left transition-all flex flex-col h-full justify-between card-hover group"
                   >
                     <div>
-                      <span className="block font-medium line-clamp-2 leading-tight">{item.name}</span>
+                      <span className="block font-bold text-gray-900 group-hover:text-violet-700 transition-colors leading-tight">{item.name}</span>
                       <span className="text-xs text-gray-500 mt-1 block">{item.category}</span>
                     </div>
-                    <span className="block font-bold text-primary mt-2">₹{item.price}</span>
+                    <span className="block font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-pink-600 mt-3">
+                      ₹{item.price.toFixed(2)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -177,101 +273,188 @@ export default function OrdersPage() {
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card className="p-4 flex flex-col h-[500px]">
-            <h2 className="text-lg font-semibold mb-4 pb-2 border-b">Current Order</h2>
-            
-            <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+        <div className="space-y-6 lg:sticky lg:top-6 h-fit">
+          <Card className="p-5 border-2 border-violet-100 shadow-xl shadow-violet-100/50 rounded-2xl flex flex-col h-[700px]">
+            <h2 className="text-xl font-bold mb-4 pb-3 border-b border-gray-100 flex items-center justify-between">
+              <span>Current Order</span>
+              {selectedTable && (
+                <span className="px-3 py-1 bg-violet-100 text-violet-700 rounded-full text-sm font-bold">
+                  Table {tables.find(t => t.id === selectedTable)?.number}
+                </span>
+              )}
+            </h2>
+
+            {/* Customer Data Capture */}
+            {selectedTable && (
+              <div className="mb-4 p-3 bg-gradient-to-br from-violet-50 to-pink-50 rounded-xl border border-violet-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">👤</span>
+                  <span className="font-bold text-gray-700 text-sm">Customer Details</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Customer name"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                  <Input
+                    placeholder="Phone number"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">💡 Optional but helpful for future visits & offers</p>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
               {orderItems.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">Select items to build order</p>
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+                  <div className="text-5xl mb-3">🛒</div>
+                  <p className="font-semibold text-gray-600">Your tray is empty</p>
+                  <p className="text-sm text-gray-400 mt-1">Select items to build an order</p>
+                </div>
               ) : (
                 orderItems.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                    <div className="flex-1 min-w-0 pr-2">
-                      <p className="font-medium truncate">{getMenuItemName(item.menuItemId)}</p>
-                      <p className="text-sm text-gray-500">₹{getMenuItemPrice(item.menuItemId)} x {item.quantity}</p>
+                  <div key={index} className="flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors p-3 rounded-xl border border-gray-100">
+                    <div className="flex-1 min-w-0 pr-3">
+                      <p className="font-bold text-gray-900 truncate">{getMenuItemName(item.menuItemId)}</p>
+                      <p className="text-xs text-gray-500 mb-2 font-medium">₹{getMenuItemPrice(item.menuItemId)} × {item.quantity}</p>
+                      <Input
+                        placeholder="Special instructions..."
+                        value={item.specialInstructions || ''}
+                        onChange={(e) => {
+                          const newOrderItems = [...orderItems];
+                          newOrderItems[index].specialInstructions = e.target.value;
+                          setOrderItems(newOrderItems);
+                        }}
+                        className="h-8 text-xs bg-white border-gray-200"
+                      />
                     </div>
-                    <div className="flex items-center space-x-2 shrink-0">
-                      <Button variant="outline" size="sm" onClick={() => handleRemoveItem(item.menuItemId)} className="h-7 w-7 p-0">
+                    <div className="flex items-center space-x-3 shrink-0 bg-white rounded-lg border border-gray-200 p-1 shadow-sm">
+                      <button onClick={() => handleRemoveItem(item.menuItemId)} className="w-7 h-7 flex items-center justify-center rounded bg-gray-50 hover:bg-gray-200 text-gray-700 font-bold transition-colors">
                         -
-                      </Button>
-                      <span className="w-4 text-center font-medium">{item.quantity}</span>
-                      <Button variant="outline" size="sm" onClick={() => handleAddItem({id: item.menuItemId})} className="h-7 w-7 p-0">
+                      </button>
+                      <span className="w-4 text-center font-bold text-sm">{item.quantity}</span>
+                      <button onClick={() => handleAddItem({id: item.menuItemId})} className="w-7 h-7 flex items-center justify-center rounded bg-violet-50 hover:bg-violet-100 text-violet-700 font-bold transition-colors">
                         +
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 ))
               )}
             </div>
 
-            <div className="pt-4 border-t mt-4">
-              <div className="flex justify-between mb-4">
-                <span className="font-semibold text-lg">Total</span>
-                <span className="font-bold text-lg text-primary">₹{currentTotal.toFixed(2)}</span>
+            <div className="pt-5 border-t border-gray-100 mt-4 bg-white">
+              <div className="flex justify-between items-end mb-5">
+                <span className="font-bold text-gray-500">Total Amount</span>
+                <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-pink-600">
+                  ₹{currentTotal.toFixed(2)}
+                </span>
               </div>
-              <Button 
+              <Button
                 onClick={handlePlaceOrder}
-                disabled={!selectedTable || orderItems.length === 0}
-                className="w-full bg-primary text-white py-6 text-lg"
+                disabled={!selectedTable || orderItems.length === 0 || isSubmitting}
+                variant="gradient"
+                className="w-full h-14 text-lg shadow-lg shadow-violet-500/25"
               >
-                Place Order
+                {isSubmitting ? 'Placing Order...' : 'Place Order 🚀'}
               </Button>
               {!selectedTable && orderItems.length > 0 && (
-                <p className="text-red-500 text-sm text-center mt-2">Please select a table first</p>
+                <p className="text-pink-500 text-sm font-semibold text-center mt-3 bg-pink-50 py-2 rounded-lg">
+                  ⚠️ Please select a table first
+                </p>
               )}
             </div>
           </Card>
         </div>
       </div>
 
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Active Orders</h2>
+      {/* Active Orders Section */}
+      <div className="pt-8">
+        <h2 className="text-2xl font-black text-gray-900 mb-6 flex items-center gap-2">
+          🔥 Active Orders
+        </h2>
         {activeOrders.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No active orders</p>
+          <Card className="p-12 text-center border-dashed border-2">
+            <div className="text-5xl mb-4">💤</div>
+            <p className="text-gray-500 font-medium">No active orders right now</p>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {activeOrders.map(order => (
-              <div key={order.id} className="border border-gray-200 rounded-lg p-4 flex flex-col">
-                <div className="flex justify-between items-center border-b pb-2 mb-2">
-                  <h3 className="font-bold text-lg">Table {order.table.number}</h3>
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full uppercase
-                    ${order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                      order.status === 'preparing' ? 'bg-blue-100 text-blue-800' : 
-                      'bg-green-100 text-green-800'}`}>
+              <Card key={order.id} className="p-5 border-2 border-gray-100 hover:border-violet-200 transition-colors flex flex-col rounded-2xl shadow-sm hover:shadow-md">
+                <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-black text-gray-700">
+                      T{order.table?.number}
+                    </span>
+                    <span className="text-sm text-gray-400 font-medium">#{order.id.slice(-4).toUpperCase()}</span>
+                  </div>
+                  <span className={`px-3 py-1 text-xs font-black rounded-full uppercase tracking-wider ${
+                    order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
+                    order.status === 'PREPARING' ? 'bg-blue-100 text-blue-700' : 
+                    order.status === 'READY' ? 'bg-green-100 text-green-700' : 
+                    order.status === 'SERVED' ? 'bg-indigo-100 text-indigo-700' : 
+                    'bg-gray-100 text-gray-700'
+                  }`}>
                     {order.status}
                   </span>
                 </div>
-                
-                <div className="flex-1 mb-4 text-sm space-y-1">
+
+                <div className="flex-1 mb-5 space-y-2">
                   {order.items.slice(0, 3).map((item: any, i: number) => (
-                    <div key={i} className="flex justify-between">
-                      <span className="truncate pr-2">{item.quantity}x {item.menuItem.name}</span>
-                      <span className="text-gray-500">₹{item.totalPrice}</span>
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-700 truncate pr-2">
+                        <span className="text-violet-600 font-bold mr-1">{item.quantity}×</span> 
+                        {item.menuItem?.name || 'Unknown Item'}
+                      </span>
+                      <span className="text-gray-500 font-medium whitespace-nowrap">
+                        ₹{((item.quantity * (item.menuItem?.price || 0)).toFixed(2))}
+                      </span>
                     </div>
                   ))}
                   {order.items.length > 3 && (
-                    <div className="text-gray-500 italic">+ {order.items.length - 3} more items</div>
+                    <div className="text-xs font-bold text-violet-500 bg-violet-50 px-2 py-1 rounded inline-block mt-2">
+                      + {order.items.length - 3} more items
+                    </div>
                   )}
                 </div>
-                
-                <div className="flex justify-between items-center mt-auto pt-3 border-t">
-                  <span className="font-bold text-primary">₹{order.totalAmount}</span>
-                  {order.status === 'ready' && (
-                    <Button 
-                      onClick={() => handleCompleteOrder(order.id)}
+
+                <div className="flex justify-between items-center pt-4 border-t border-gray-100 mt-auto">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">Total</p>
+                    <span className="font-black text-lg text-gray-900">₹{order.totalAmount.toFixed(2)}</span>
+                  </div>
+                  
+                  {order.status === 'READY' && (
+                    <Button
+                      onClick={() => handleUpdateOrderStatus(order.id, 'SERVED')}
                       size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-500/20"
                     >
-                      Complete
+                      🍽️ Serve Order
+                    </Button>
+                  )}
+                  {order.status === 'SERVED' && (
+                    <Button
+                      onClick={() => handleUpdateOrderStatus(order.id, 'COMPLETED')}
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-md shadow-green-500/20"
+                    >
+                      ✅ Complete
                     </Button>
                   )}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }
+
+OrdersPage.displayName = 'OrdersPage';

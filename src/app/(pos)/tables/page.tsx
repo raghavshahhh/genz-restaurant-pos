@@ -1,188 +1,329 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 export default function TablesPage() {
   const [tables, setTables] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const [number, setNumber] = useState(1);
-  const [capacity, setCapacity] = useState(4);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [tableToDelete, setTableToDelete] = useState<string | null>(null);
+  const router = useRouter();
+
+  // Form state for adding table
+  const [number, setNumber] = useState('');
+  const [capacity, setCapacity] = useState('');
+  const [restaurantId, setRestaurantId] = useState('genz-restaurant');
 
   useEffect(() => {
     fetchTables();
   }, []);
 
   const fetchTables = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const res = await fetch('/api/tables');
-      if (!res.ok) throw new Error('Failed to fetch tables');
-      const data = await res.json();
+      const response = await fetch('/api/tables');
+      if (!response.ok) {
+        throw new Error('Failed to fetch tables');
+      }
+      const data = await response.json();
       setTables(data);
     } catch (err) {
-      setError('Failed to fetch tables');
+      setError('Failed to load tables. Please try again.');
       console.error('Error fetching tables:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmitTable = async (e: React.FormEvent) => {
+  const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!number || !capacity || !restaurantId) return;
+
+    setLoading(true);
     try {
-      const res = await fetch('/api/tables', {
+      const response = await fetch('/api/tables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number, capacity })
+        body: JSON.stringify({
+          number: parseInt(number),
+          capacity: parseInt(capacity),
+          restaurantId,
+        }),
       });
-      if (!res.ok) throw new Error('Failed to create table');
+
+      if (!response.ok) {
+        throw new Error('Failed to create table');
+      }
+
+      // Reset form
+      setNumber('');
+      setCapacity('');
+      setRestaurantId('');
+      setShowAddModal(false);
       
-      setNumber(1);
-      setCapacity(4);
+      // Refresh tables
       await fetchTables();
     } catch (err) {
-      setError('Failed to create table');
+      setError('Failed to create table. Please try again.');
       console.error('Error creating table:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDeleteTable = async () => {
+    if (!tableToDelete) return;
+
+    setLoading(true);
     try {
-      const res = await fetch(`/api/tables/${id}`, {
-        method: 'DELETE'
+      const response = await fetch(`/api/tables/${tableToDelete}`, {
+        method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Failed to delete table');
+
+      if (!response.ok) {
+        throw new Error('Failed to delete table');
+      }
+
+      setShowDeleteModal(false);
+      setTableToDelete(null);
       await fetchTables();
     } catch (err) {
-      setError('Failed to delete table');
+      setError('Failed to delete table. Please try again.');
       console.error('Error deleting table:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex h-[600px] items-center justify-center">
-        <div className="animate-spin rounded-full border-4 border-primary border-t-transparent h-12 w-12"></div>
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full border-4 border-violet-600 border-t-transparent h-12 w-12 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading seating arrangements...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 text-red-500 p-4 rounded-lg mb-6">
-        {error}
+      <div className="p-6 text-center">
+        <h2 className="text-xl font-bold mb-4">Error</h2>
+        <p className="text-red-500">{error}</p>
+        <Button onClick={() => { setError(null); fetchTables(); }} className="mt-4">
+          Try Again
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="pb-4">
-        <h1 className="text-2xl font-bold">Table Management</h1>
-        <p className="text-sm text-gray-500">
-          Manage your restaurant tables and their status
-        </p>
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="pb-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-gray-900">Tables Management</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage seating capacity and table statuses</p>
+          </div>
+          <Button
+            onClick={() => setShowAddModal(true)}
+            variant="gradient"
+            size="lg"
+          >
+            ➕ Add New Table
+          </Button>
+        </div>
       </div>
 
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Add New Table</h2>
-        <form onSubmit={handleSubmitTable} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Table Number</label>
-              <Input
-                type="number"
-                value={number}
-                onChange={(e) => setNumber(parseInt(e.target.value))}
-                placeholder="Enter table number"
-                required
-                min={1}
-              />
+      {/* Add Table Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center text-2xl">
+                🪑
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Add New Table</h2>
+                <p className="text-sm text-gray-500">Add seating for your guests</p>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Capacity</label>
-              <Input
-                type="number"
-                value={capacity}
-                onChange={(e) => setCapacity(parseInt(e.target.value))}
-                placeholder="Enter seating capacity"
-                required
-                min={1}
-              />
+            <form onSubmit={handleAddTable} className="space-y-4">
+              <div>
+                <label htmlFor="tableNumber" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Table Number
+                </label>
+                <Input
+                  id="tableNumber"
+                  type="number"
+                  value={number}
+                  onChange={(e) => setNumber(e.target.value)}
+                  className="w-full"
+                  placeholder="e.g., 1"
+                />
+              </div>
+              <div>
+                <label htmlFor="tableCapacity" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Capacity (Seats)
+                </label>
+                <Input
+                  id="tableCapacity"
+                  type="number"
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                  className="w-full"
+                  placeholder="e.g., 4"
+                />
+              </div>
+              <div>
+                <label htmlFor="tableRestaurantId" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Restaurant ID
+                </label>
+                <Input
+                  id="tableRestaurantId"
+                  value={restaurantId}
+                  onChange={(e) => setRestaurantId(e.target.value)}
+                  className="w-full"
+                  placeholder="e.g., 1"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button
+                  onClick={() => setShowAddModal(false)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="gradient" className="flex-1">
+                  Add Table
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && tableToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Delete Table</h2>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this table? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setTableToDelete(null);
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleDeleteTable}
+                variant="destructive"
+                className="flex-1"
+              >
+                Delete Table
+              </Button>
             </div>
           </div>
-          <Button type="submit" className="w-full bg-primary text-white">
-            Add Table
-          </Button>
-        </form>
-      </Card>
+        </div>
+      )}
 
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Current Tables</h2>
-
+      {/* Tables Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {tables.length === 0 ? (
-          <p className="text-center py-8 text-gray-500">
-            No tables found. Add your first table above.
-          </p>
+          <Card className="p-12 text-center col-span-full">
+            <div className="text-6xl mb-4">🪑</div>
+            <p className="text-gray-500 mb-4">No tables found</p>
+            <p className="text-sm text-gray-400">
+              Add your first table to get started with seating arrangements
+            </p>
+          </Card>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Table #
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Capacity
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {tables.map((table) => (
-                  <tr key={table.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{table.number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {table.capacity} seats
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                        ${table.status === 'available' ? 'bg-green-100 text-green-800' :
-                          table.status === 'occupied' ? 'bg-red-100 text-red-800' :
-                          table.status === 'reserved' ? 'bg-blue-100 text-blue-800' :
-                          'bg-yellow-100 text-yellow-800'}`}>
-                        {table.status.charAt(0).toUpperCase() + table.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleDelete(table.id)}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          tables.map((table) => (
+            <div
+              key={table.id}
+              className={`border-2 rounded-xl p-5 transition-all card-hover bg-white ${
+                table.status === 'AVAILABLE'
+                  ? 'border-green-200 shadow-sm shadow-green-100'
+                  : table.status === 'OCCUPIED'
+                    ? 'border-red-200 shadow-sm shadow-red-100'
+                    : 'border-yellow-200 shadow-sm shadow-yellow-100'
+              }`}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${
+                    table.status === 'AVAILABLE'
+                      ? 'bg-green-100 text-green-700'
+                      : table.status === 'OCCUPIED'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    T{table.number}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Capacity</p>
+                    <p className="font-bold text-gray-900">{table.capacity} Seats</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    setTableToDelete(table.id);
+                    setShowDeleteModal(true);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs text-red-600 hover:bg-red-50 border-transparent shadow-none"
+                >
+                  🗑️
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between mt-6">
+                <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                  table.status === 'AVAILABLE'
+                    ? 'bg-green-100 text-green-700'
+                    : table.status === 'OCCUPIED'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {table.status === 'AVAILABLE' ? '🟢 AVAILABLE' : table.status === 'OCCUPIED' ? '🔴 OCCUPIED' : '🟡 RESERVED'}
+                </span>
+                
+                <p className="text-xs text-gray-400">
+                  Res ID: {table.restaurant?.id || table.restaurantId || 'N/A'}
+                </p>
+              </div>
+            </div>
+          ))
         )}
-      </Card>
+      </div>
     </div>
   );
 }
+
+TablesPage.displayName = 'TablesPage';

@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const tables = await prisma.table.findMany({
-      orderBy: { number: 'asc' }
+      orderBy: { number: 'asc' },
+      include: { restaurant: true }
     });
     return NextResponse.json(tables);
   } catch (error) {
@@ -16,16 +17,13 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { number, capacity } = body;
-    
-    if (!number || !capacity) {
-      return NextResponse.json({ error: 'Missing number or capacity' }, { status: 400 });
-    }
+    const { number, capacity, restaurantId } = body;
 
     const table = await prisma.table.create({
       data: {
         number: parseInt(number),
-        capacity: parseInt(capacity)
+        capacity: parseInt(capacity),
+        restaurantId: restaurantId || 'genz-restaurant'
       }
     });
     return NextResponse.json(table, { status: 201 });

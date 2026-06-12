@@ -1,101 +1,82 @@
-import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-export const dynamic = 'force-dynamic';
-
+// GET reports data
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const start = searchParams.get('start');
-    const end = searchParams.get('end');
+    const startDateStr = searchParams.get('startDate');
+    const endDateStr = searchParams.get('endDate');
     
-    if (!start || !end) {
-      return NextResponse.json({ error: 'Start and end dates are required' }, { status: 400 });
-    }
-
-    const startDate = new Date(start);
-    const endDate = new Date(end);
+    // Default to today if no dates provided
+    const startDate = startDateStr ? new Date(startDateStr) : new Date();
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    
+    // Set end date to end of day
     endDate.setHours(23, 59, 59, 999);
-
-    const bills = await prisma.bill.findMany({
+    
+    // Get completed orders within date range
+    const orders = await prisma.order.findMany({
       where: {
+        status: 'COMPLETED',
         createdAt: {
           gte: startDate,
-          lte: endDate
+          lte: endDate,
         },
-        status: 'paid'
       },
       include: {
-        order: {
+        items: {
           include: {
-            table: true,
-            items: {
-              include: {
-                menuItem: true
-              }
-            }
+            menuItem: true
           }
         }
       }
     });
 
-    const totalSales = bills.reduce((sum, bill) => sum + bill.finalAmount, 0);
-    const totalTax = bills.reduce((sum, bill) => sum + bill.taxAmount, 0);
-    const totalDiscount = bills.reduce((sum, bill) => sum + bill.discountAmount, 0);
-    const totalBills = bills.length;
+    // Calculate daily sales total
+    const dailySalesTotal = orders.reduce((sum: number, order: any) => sum + order.totalAmount, 0);
     
-    const paymentMethodStats = bills.reduce((acc: any, bill) => {
-      const method = bill.paymentMethod || 'cash';
-      acc[method] = (acc[method] || 0) + 1;
-      return acc;
-    }, {});
-
-    const itemPopularity: Record<string, { name: string; quantity: number; revenue: number }> = {};
-    bills.forEach(bill => {
-      bill.order.items.forEach((item: any) => {
-        const itemId = item.menuItem.id;
-        if (!itemPopularity[itemId]) {
-          itemPopularity[itemId] = {
+    // Calculate orders count
+    const ordersCount = orders.length;
+    
+    // Calculate top 3 selling items
+    const itemSales: Record<string, { name: string; quantity: number; revenue: number }> = {};
+    
+    orders.forEach((order: any) => {
+      order.items.forEach((item: any) => {
+        if (!itemSales[item.menuItemId]) {
+          itemSales[item.menuItemId] = {
             name: item.menuItem.name,
             quantity: 0,
             revenue: 0
           };
         }
-        itemPopularity[itemId].quantity += item.quantity;
-        itemPopularity[itemId].revenue += (item.quantity * item.unitPrice);
+        
+        itemSales[item.menuItemId].quantity += item.quantity;
+        itemSales[item.menuItemId].revenue += item.quantity * item.menuItem.price;
       });
     });
-
-    const topItems = Object.values(itemPopularity)
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 10);
-
-    const hourlySales: Record<number, number> = {};
-    for (let i = 0; i < 24; i++) {
-      hourlySales[i] = 0;
-    }
     
-    bills.forEach(bill => {
-      const hour = new Date(bill.createdAt).getHours();
-      hourlySales[hour] = (hourlySales[hour] || 0) + bill.finalAmount;
-    });
-
-    const hourlyData = Object.entries(hourlySales)
-      .map(([hour, amount]) => ({
-        hour: parseInt(hour),
-        amount: amount as number
-      }))
-      .sort((a, b) => a.hour - b.hour);
-
+    const topItems = Object.values(itemSales)
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 3);
+    
+    // Calculate payment methods breakdown (if we had payment status on orders)
+    // For simplicity, we'll skip this for now since we don't have paymentStatus field in order yet
+    
     return NextResponse.json({
-      dateRange: { start, end },
-      totals: { sales: totalSales, tax: totalTax, discount: totalDiscount, bills: totalBills },
-      paymentMethods: paymentMethodStats,
+      dailySalesTotal,
+      ordersCount,
       topItems,
-      hourlySales: hourlyData
+      dateRange: {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
+      }
     });
   } catch (error) {
-    console.error('Error generating report:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to generate report' },
+      { status: 500 }
+    );
   }
 }

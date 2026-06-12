@@ -1,66 +1,33 @@
 import type { Metadata } from "next";
-import "./globals.css";
 import { Inter } from "next/font/google";
+import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  variable: "--font-inter-sans",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
   title: "Gen-Z Restaurant POS",
-  description: "Restaurant Point of Sale System",
+  description: "Modern POS system for Gen-Z Restaurant",
 };
 
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-};
+import Sidebar from '@/components/sidebar';
+import { Toaster } from 'sonner';
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        {/* Navigation */}
-        <nav className="bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="text-xl font-bold text-primary">RagsPOS</span>
-                </div>
-                <div className="hidden md:block">
-                  <div className="ml-10 flex items-baseline space-x-4">
-                    <a href="/" className="text-gray-700 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium">Home</a>
-                    <a href="/pos/tables" className="text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium">Tables</a>
-                    <a href="/pos/menu" className="text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium">Menu</a>
-                    <a href="/pos/orders" className="text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium">Orders</a>
-                    <a href="/pos/kot" className="text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium">KOT</a>
-                    <a href="/pos/bills" className="text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium">Bills</a>
-                    <a href="/pos/reports" className="text-gray-500 hover:bg-gray-50 px-3 py-2 rounded-md text-sm font-medium">Reports</a>
-                  </div>
-                </div>
-              </div>
-              <div className="hidden md:block">
-                <div className="ml-4 flex items-center md:ml-6">
-                  <button type="button" className="bg-white rounded-md px-2.5 py-1.5 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2">
-                    User
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        {/* Main Content */}
-        <main className="flex min-h-[calc(100vh-16rem)]">
-          <div className="overflow-y-auto flex-1 pb-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-              {children}
-            </div>
-          </div>
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex bg-gray-50 font-sans">
+        <Sidebar />
+        <main className="flex-1 flex flex-col overflow-y-auto p-6">
+          {children}
         </main>
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

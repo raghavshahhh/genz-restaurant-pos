@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { signIn } from "next-auth/react"
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -52,12 +53,25 @@ export function RegisterForm() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        setError(error.message || "Failed to create account")
+        const errorData = await response.json()
+        setError(errorData.message || "Failed to create account")
       } else {
-        router.push("/login")
+        // Automatically sign in after successful registration
+        const signInResult = await signIn("credentials", {
+          redirect: false,
+          email: data.email,
+          password: data.password,
+        })
+
+        if (signInResult?.error) {
+          setError("Account created but failed to sign in. Please log in manually.")
+        } else {
+          router.push("/pos/tables")
+          // Note: In Next.js 14, router.push doesn't immediately navigate
+          // The navigation will happen after this function completes
+        }
       }
-    } catch {
+    } catch (error) {
       setError("An error occurred. Please try again.")
     } finally {
       setIsLoading(false)

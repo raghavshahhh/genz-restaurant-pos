@@ -1,19 +1,15 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const statusParam = searchParams.get('status');
-    
-    let whereClause = {};
-    if (statusParam) {
-      whereClause = {
-        status: { in: statusParam.split(',') }
-      };
-    }
+    const status = searchParams.get('status');
+    const tableId = searchParams.get('tableId');
+
+    let whereClause: any = {};
+    if (status) whereClause.status = status.toUpperCase();
+    if (tableId) whereClause.tableId = tableId;
 
     const orders = await prisma.order.findMany({
       where: whereClause,
@@ -38,64 +34,45 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { tableId, items, customerName, customerPhone } = body;
-    
-    if (!tableId || !items || items.length === 0) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
 
+    // Calculate total
     let totalAmount = 0;
-    const orderItemsWithDetails = await Promise.all(
-      items.map(async (item: any) => {
-        const menuItem = await prisma.menuItem.findUnique({
-          where: { id: item.menuItemId }
-        });
-
-        if (!menuItem) {
-          throw new Error(`Menu item ${item.menuItemId} not found`);
-        }
-
-        const totalPrice = menuItem.price * item.quantity;
-        totalAmount += totalPrice;
-
-        return {
-          menuItemId: item.menuItemId,
-          quantity: item.quantity,
-          unitPrice: menuItem.price,
-          totalPrice,
-          specialInstructions: item.specialInstructions || ''
-        };
-      })
-    );
-
-    // Create customer if needed, or just keep it simple
-    // The current schema has customerName/phone on Customer model, not Order
-    // Wait, let me check schema again. Order has customerId, TableId.
-    let customerId = undefined;
-    if (customerName || customerPhone) {
-      const customer = await prisma.customer.create({
-        data: {
-          name: customerName || 'Walk-in',
-          phone: customerPhone || null
-        }
+    for (const item of items) {
+      const menuItem = await prisma.menuItem.findUnique({
+        where: { id: item.menuItemId }
       });
-      customerId = customer.id;
+      if (menuItem) {
+        totalAmount += menuItem.price * item.quantity;
+      }
     }
 
     const order = await prisma.order.create({
       data: {
-        tableId: parseInt(tableId),
-        customerId,
+        tableId,
+        customerName,
+        customerPhone,
         totalAmount,
+        status: 'PENDING',
+        paymentStatus: 'PENDING',
         items: {
-          create: orderItemsWithDetails
+          create: items.map((item: any) => ({
+            menuItemId: item.menuItemId,
+            quantity: item.quantity,
+            price: 0, // Will be updated
+            specialInstructions: item.specialInstructions
+          }))
         }
       },
       include: {
         table: true,
-        items: true
+        items: {
+          include: {
+            menuItem: true
+          }
+        }
       }
     });
-    
+
     return NextResponse.json(order, { status: 201 });
   } catch (error) {
     console.error('Error creating order:', error);
