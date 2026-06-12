@@ -23,6 +23,13 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Redirect authenticated users away from login page
+  if (pathname === '/auth/login' && token) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 
