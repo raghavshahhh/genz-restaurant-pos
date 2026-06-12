@@ -18,7 +18,7 @@ export default function TablesPage() {
   // Form state for adding table
   const [number, setNumber] = useState('');
   const [capacity, setCapacity] = useState('');
-  const [restaurantId, setRestaurantId] = useState('');
+  const [restaurantId, setRestaurantId] = useState('genz-restaurant');
 
   useEffect(() => {
     fetchTables();

@@ -100,7 +100,7 @@ export default function MenuPage() {
           price: parseFloat(price),
           imageUrl,
           available,
-          restaurantId: '1', // In a real app, this would come from auth/user context
+          restaurantId: 'genz-restaurant', // Default restaurant ID from seed
         }),
       });
 
