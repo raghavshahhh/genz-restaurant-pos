@@ -105,7 +105,10 @@ export default function TablesPage() {
   if (loading) {
     return (
       <div className="min-h-[600px] flex items-center justify-center">
-        <div className="animate-spin rounded-full border-4 border-primary border-t-transparent h-12 w-12"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full border-4 border-violet-600 border-t-transparent h-12 w-12 mx-auto"></div>
+          <p className="mt-4 text-gray-500">Loading seating arrangements...</p>
+        </div>
       </div>
     );
   }
@@ -123,30 +126,40 @@ export default function TablesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="pb-4">
-        <h1 className="text-2xl font-bold flex items-center justify-between">
-          Tables Management
-          <Button 
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="pb-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-gray-900">Tables Management</h1>
+            <p className="text-sm text-gray-500 mt-1">Manage seating capacity and table statuses</p>
+          </div>
+          <Button
             onClick={() => setShowAddModal(true)}
-            className="bg-primary text-white"
+            variant="gradient"
+            size="lg"
           >
-            Add Table
+            ➕ Add New Table
           </Button>
-        </h1>
-        <p className="text-sm text-gray-500">
-          View and manage restaurant tables
-        </p>
+        </div>
       </div>
 
       {/* Add Table Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold mb-4">Add New Table</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center text-2xl">
+                🪑
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Add New Table</h2>
+                <p className="text-sm text-gray-500">Add seating for your guests</p>
+              </div>
+            </div>
             <form onSubmit={handleAddTable} className="space-y-4">
               <div>
-                <label htmlFor="tableNumber" className="mb-2 block font-medium">
+                <label htmlFor="tableNumber" className="block text-sm font-semibold text-gray-700 mb-2">
                   Table Number
                 </label>
                 <Input
@@ -155,11 +168,11 @@ export default function TablesPage() {
                   value={number}
                   onChange={(e) => setNumber(e.target.value)}
                   className="w-full"
-                  placeholder="Enter table number"
+                  placeholder="e.g., 1"
                 />
               </div>
               <div>
-                <label htmlFor="tableCapacity" className="mb-2 block font-medium">
+                <label htmlFor="tableCapacity" className="block text-sm font-semibold text-gray-700 mb-2">
                   Capacity (Seats)
                 </label>
                 <Input
@@ -168,11 +181,11 @@ export default function TablesPage() {
                   value={capacity}
                   onChange={(e) => setCapacity(e.target.value)}
                   className="w-full"
-                  placeholder="Enter seat capacity"
+                  placeholder="e.g., 4"
                 />
               </div>
               <div>
-                <label htmlFor="tableRestaurantId" className="mb-2 block font-medium">
+                <label htmlFor="tableRestaurantId" className="block text-sm font-semibold text-gray-700 mb-2">
                   Restaurant ID
                 </label>
                 <Input
@@ -180,17 +193,18 @@ export default function TablesPage() {
                   value={restaurantId}
                   onChange={(e) => setRestaurantId(e.target.value)}
                   className="w-full"
-                  placeholder="Enter restaurant ID"
+                  placeholder="e.g., 1"
                 />
               </div>
-              <div className="flex justify-end space-x-3">
+              <div className="flex gap-3 pt-4">
                 <Button
                   onClick={() => setShowAddModal(false)}
                   variant="outline"
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-primary text-white">
+                <Button type="submit" variant="gradient" className="flex-1">
                   Add Table
                 </Button>
               </div>
@@ -201,25 +215,35 @@ export default function TablesPage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && tableToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
-            <p className="mb-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Delete Table</h2>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-gray-600 mb-6">
               Are you sure you want to delete this table? This action cannot be undone.
             </p>
-            <div className="flex justify-end space-x-3">
+            <div className="flex gap-3">
               <Button
                 onClick={() => {
                   setShowDeleteModal(false);
                   setTableToDelete(null);
                 }}
                 variant="outline"
+                className="flex-1"
               >
                 Cancel
               </Button>
               <Button 
                 onClick={handleDeleteTable}
-                className="bg-destructive text-destructive-foreground"
+                variant="destructive"
+                className="flex-1"
               >
                 Delete Table
               </Button>
@@ -228,55 +252,76 @@ export default function TablesPage() {
         </div>
       )}
 
-      {/* Tables List */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">All Tables</h2>
-        
+      {/* Tables Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {tables.length === 0 ? (
-          <p className="text-center py-8 text-gray-500">
-            No tables found. Add your first table to get started.
-          </p>
+          <Card className="p-12 text-center col-span-full">
+            <div className="text-6xl mb-4">🪑</div>
+            <p className="text-gray-500 mb-4">No tables found</p>
+            <p className="text-sm text-gray-400">
+              Add your first table to get started with seating arrangements
+            </p>
+          </Card>
         ) : (
-          <div className="divide-y divide-gray-200">
-            {tables.map((table) => (
-              <div key={table.id} className="py-4">
-                <div className="flex justify-between items-center">
-                  <div className="flex-1">
-                    <h3 className="font-bold">{`Table #${table.number}`}</h3>
-                    <p className="text-sm text-gray-500">
-                      Capacity: {table.capacity} seats
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Restaurant: {table.restaurant?.name || 'N/A'}
-                    </p>
+          tables.map((table) => (
+            <div
+              key={table.id}
+              className={`border-2 rounded-xl p-5 transition-all card-hover bg-white ${
+                table.status === 'AVAILABLE'
+                  ? 'border-green-200 shadow-sm shadow-green-100'
+                  : table.status === 'OCCUPIED'
+                    ? 'border-red-200 shadow-sm shadow-red-100'
+                    : 'border-yellow-200 shadow-sm shadow-yellow-100'
+              }`}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${
+                    table.status === 'AVAILABLE'
+                      ? 'bg-green-100 text-green-700'
+                      : table.status === 'OCCUPIED'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    T{table.number}
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      table.status === 'AVAILABLE'
-                        ? 'bg-green-100 text-green-800'
-                        : table.status === 'OCCUPIED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {table.status}
-                    </span>
-                    <Button
-                      onClick={() => {
-                        setTableToDelete(table.id);
-                        setShowDeleteModal(true);
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Delete
-                    </Button>
+                  <div>
+                    <p className="text-sm text-gray-500">Capacity</p>
+                    <p className="font-bold text-gray-900">{table.capacity} Seats</p>
                   </div>
                 </div>
+                <Button
+                  onClick={() => {
+                    setTableToDelete(table.id);
+                    setShowDeleteModal(true);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs text-red-600 hover:bg-red-50 border-transparent shadow-none"
+                >
+                  🗑️
+                </Button>
               </div>
-            ))}
-          </div>
+
+              <div className="flex items-center justify-between mt-6">
+                <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                  table.status === 'AVAILABLE'
+                    ? 'bg-green-100 text-green-700'
+                    : table.status === 'OCCUPIED'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                }`}>
+                  {table.status === 'AVAILABLE' ? '🟢 AVAILABLE' : table.status === 'OCCUPIED' ? '🔴 OCCUPIED' : '🟡 RESERVED'}
+                </span>
+                
+                <p className="text-xs text-gray-400">
+                  Res ID: {table.restaurant?.id || table.restaurantId || 'N/A'}
+                </p>
+              </div>
+            </div>
+          ))
         )}
-      </Card>
+      </div>
     </div>
   );
 }

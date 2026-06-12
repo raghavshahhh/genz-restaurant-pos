@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function BillsPage() {
   const [bills, setBills] = useState<any[]>([]);
@@ -14,6 +15,8 @@ export default function BillsPage() {
   const [showBillModal, setShowBillModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedBill, setSelectedBill] = useState<any>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   useEffect(() => {
     fetchBills();
@@ -71,9 +74,9 @@ export default function BillsPage() {
       const response = await fetch(`/api/bills/${billId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: 'PAID',
-          paymentMethod 
+          paymentMethod
         })
       });
 
@@ -82,6 +85,7 @@ export default function BillsPage() {
       }
 
       toast.success('Payment recorded successfully!');
+      setShowPaymentModal(false);
       setShowBillModal(false);
       setSelectedBill(null);
       await fetchBills();
@@ -92,6 +96,20 @@ export default function BillsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleInitiatePayment = (bill: any) => {
+    setSelectedBill(bill);
+    setShowPaymentModal(true);
+    setPaymentConfirmed(false);
+  };
+
+  // UPI QR Code payload format: upi://pay?pa=ADDRESS&pn=NAME&am=AMOUNT&cu=INR
+  const generateUPIPayload = (bill: any) => {
+    const upiId = process.env.NEXT_PUBLIC_UPI_ID || 'restaurant@upi';
+    const merchantName = 'Gen-Z Restaurant';
+    const amount = bill.total.toFixed(2);
+    return `upi://pay?pa=${upiId}&pn=${encodeURIComponent(merchantName)}&am=${amount}&cu=INR&tn=Bill_${bill.id}`;
   };
 
   const handlePrintBill = () => {
@@ -170,6 +188,70 @@ export default function BillsPage() {
         </p>
       </div>
 
+      {/* UPI Payment Modal */}
+      {showPaymentModal && selectedBill && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center text-3xl mx-auto mb-4">
+                💳
+              </div>
+              <h2 className="text-2xl font-black text-gray-900">Scan to Pay</h2>
+              <p className="text-sm text-gray-500 mt-1">UPI QR Code for payment</p>
+            </div>
+
+            {/* QR Code Section */}
+            <div className="bg-gradient-to-br from-violet-50 to-pink-50 rounded-2xl p-6 mb-6">
+              <div className="bg-white p-4 rounded-xl shadow-lg flex justify-center">
+                <QRCodeSVG
+                  value={generateUPIPayload(selectedBill)}
+                  size={220}
+                  level="H"
+                  includeMargin={true}
+                />
+              </div>
+              <p className="text-center text-xs text-gray-600 mt-4 font-medium">
+                Scan with any UPI app (GPay, PhonePe, Paytm, BHIM)
+              </p>
+            </div>
+
+            {/* Payment Details */}
+            <div className="space-y-3 mb-6">
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-600">Bill Amount</span>
+                <span className="font-bold text-gray-900">₹{selectedBill.total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-600">Table Number</span>
+                <span className="font-bold text-gray-900">Table {selectedBill.order.table?.number}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-600">Customer</span>
+                <span className="font-bold text-gray-900">{selectedBill.order.customerName || 'Walk-in'}</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  handleMarkPaid(selectedBill.id, 'UPI');
+                }}
+                variant="gradient"
+                className="flex-1 h-12 text-lg"
+                disabled={!paymentConfirmed}
+              >
+                ✓ Confirm Payment Received
+              </Button>
+            </div>
+
+            <p className="text-center text-xs text-gray-500 mt-4">
+              ⚠️ Only confirm after verifying payment in your UPI app
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Generate Bill Modal */}
       {showGenerateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-50">
@@ -227,62 +309,100 @@ export default function BillsPage() {
               </Button>
             </div>
 
-            <div id="print-receipt" className="mb-6 p-4 bg-gray-50 rounded border border-gray-200 text-sm font-mono max-w-sm mx-auto print:bg-white print:border-none print:w-full print:max-w-full print:p-0">
+            <div id="print-receipt" className="mb-6 p-6 bg-gradient-to-br from-gray-50 to-white rounded-2xl border-2 border-violet-200 print:bg-white print:border-none print:w-full print:max-w-full print:p-4">
               <div className="text-center mb-4">
-                <h2 className="text-xl font-bold uppercase mb-1">Gen-Z Restaurant</h2>
-                <p className="text-xs">123 Main St</p>
-                <p className="text-xs">Tel: (555) 123-4567</p>
-              </div>
-              
-              <div className="border-t border-b border-dashed border-gray-400 py-2 mb-4 text-xs space-y-1">
-                <p><span className="font-semibold">Order #:</span> {selectedBill.order.id}</p>
-                <p><span className="font-semibold">Date:</span> {new Date(selectedBill.order.createdAt).toLocaleString()}</p>
-                <p><span className="font-semibold">Table:</span> {selectedBill.order.table.number}  |  <span className="font-semibold">Customer:</span> {selectedBill.order.customerName || 'Walk-in'}</p>
+                <div className="flex justify-center mb-3">
+                  <div className="w-32">
+                    <img src="/logo.svg" alt="Gen-Z Restaurant" className="w-full" />
+                  </div>
+                </div>
+                <h2 className="text-lg font-black uppercase tracking-wider mb-1">GEN-Z RESTAURANT</h2>
+                <p className="text-xs text-gray-600">123 Main Street, New Delhi, India</p>
+                <p className="text-xs text-gray-600">GST No: 07AABCG1234A1Z5</p>
+                <p className="text-xs text-gray-600">Tel: +91 98765 43210</p>
               </div>
 
-              <div className="mb-4">
-                <div className="flex justify-between font-semibold border-b border-gray-300 pb-1 mb-2 text-xs">
-                  <span>ITEM</span>
-                  <span>AMT</span>
+              <div className="border-t-2 border-b-2 border-dashed border-gray-300 py-3 mb-4 text-xs space-y-1.5 bg-white p-3 rounded-lg">
+                <div className="flex justify-between">
+                  <span className="font-semibold">Order #:</span>
+                  <span className="font-mono">{selectedBill.order.id.slice(-8).toUpperCase()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold">Date:</span>
+                  <span>{new Date(selectedBill.order.createdAt).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold">Table:</span>
+                  <span className="font-bold">Table {selectedBill.order.table?.number}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold">Customer:</span>
+                  <span>{selectedBill.order.customerName || 'Walk-in'}</span>
+                </div>
+                {selectedBill.order.customerPhone && (
+                  <div className="flex justify-between">
+                    <span className="font-semibold">Phone:</span>
+                    <span>{selectedBill.order.customerPhone}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-4 bg-white p-3 rounded-lg">
+                <div className="flex justify-between font-black text-gray-700 border-b-2 border-gray-200 pb-2 mb-2 text-xs uppercase tracking-wider">
+                  <span>Item</span>
+                  <span>Amt</span>
                 </div>
                 <div className="space-y-2">
-                  {selectedBill.order.items.map((item: any) => (
-                    <div key={item.id} className="text-xs">
-                      <div className="flex justify-between">
-                        <span>{item.quantity}x {item.menuItem.name}</span>
-                        <span>₹{(item.quantity * item.price).toFixed(2)}</span>
+                  {selectedBill.order.items.map((item: any, idx: number) => (
+                    <div key={idx} className="text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-gray-900">{item.quantity}x {item.menuItem.name}</span>
+                        <span className="font-semibold">₹{(item.quantity * item.price).toFixed(2)}</span>
                       </div>
                       {item.specialInstructions && (
-                        <div className="text-gray-500 ml-4 italic">- {item.specialInstructions}</div>
+                        <div className="text-red-500 text-xs mt-0.5 ml-1 font-medium">
+                          ⚠️ {item.specialInstructions}
+                        </div>
                       )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="border-t border-dashed border-gray-400 pt-2 space-y-1 text-xs">
-                <div className="flex justify-between">
+              <div className="border-t-2 border-dashed border-gray-300 pt-3 space-y-2 text-xs bg-white p-3 rounded-lg">
+                <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
                   <span>₹{selectedBill.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Tax (5%)</span>
-                  <span>₹{selectedBill.tax.toFixed(2)}</span>
+                <div className="flex justify-between text-gray-600">
+                  <span>CGST (9%)</span>
+                  <span>₹{(selectedBill.tax / 2).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between font-bold text-sm mt-2 pt-2 border-t border-gray-300">
+                <div className="flex justify-between text-gray-600">
+                  <span>SGST (9%)</span>
+                  <span>₹{(selectedBill.tax / 2).toFixed(2)}</span>
+                </div>
+                {selectedBill.discount > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>-₹{selectedBill.discount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-black text-lg mt-3 pt-3 border-t-2 border-gray-300 bg-gradient-to-r from-violet-50 to-pink-50 p-2 rounded">
                   <span>TOTAL</span>
-                  <span>₹{selectedBill.total.toFixed(2)}</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-pink-600">₹{selectedBill.total.toFixed(2)}</span>
                 </div>
               </div>
 
               {selectedBill.status === 'PAID' && (
-                <div className="mt-6 text-center text-xs font-bold border-t border-b border-gray-400 py-2">
-                  PAID VIA {selectedBill.paymentMethod || 'CASH'}
+                <div className="mt-4 text-center font-black text-sm border-2 border-green-500 text-green-600 py-2 rounded-lg bg-green-50">
+                  ✓ PAID VIA {selectedBill.paymentMethod || 'CASH'}
                 </div>
               )}
 
-              <div className="text-center mt-6 text-xs italic">
-                Thank you for dining with us!
+              <div className="text-center mt-6 text-xs text-gray-500">
+                <p className="font-medium">Thank you for dining with us! 💚</p>
+                <p className="mt-1">Visit us again at genz-restaurant.com</p>
               </div>
             </div>
 
@@ -309,20 +429,26 @@ export default function BillsPage() {
               {selectedBill.status === 'PENDING' && (
                 <>
                   <Button
+                    onClick={() => handleInitiatePayment(selectedBill)}
+                    variant="gradient"
+                    className="bg-gradient-to-r from-violet-600 to-pink-600"
+                  >
+                    💳 Pay via UPI
+                  </Button>
+                  <Button
                     onClick={() => {
-                      // In a real app, this would integrate with payment gateway
-                      const paymentMethod = prompt('Enter payment method (cash, card, UPI, etc.)') || 'cash';
+                      const paymentMethod = prompt('Enter payment method (cash, card, etc.)') || 'cash';
                       handleMarkPaid(selectedBill.id, paymentMethod);
                     }}
                     variant="outline"
                   >
-                    Mark as Paid
+                    Cash/Card
                   </Button>
                   <Button
                     onClick={handlePrintBill}
-                    className="bg-primary text-white"
+                    variant="outline"
                   >
-                    Print Bill
+                    🖨️ Print
                   </Button>
                 </>
               )}
@@ -330,9 +456,10 @@ export default function BillsPage() {
               {selectedBill.status === 'PAID' && (
                 <Button
                   onClick={handlePrintBill}
-                  className="bg-primary text-white"
+                  variant="gradient"
+                  className="bg-gradient-to-r from-green-600 to-emerald-600"
                 >
-                  Re-print Bill
+                  🖨️ Re-print Bill
                 </Button>
               )}
             </div>

@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('contact@genz-restaurant.com');
   const [gstNumber, setGstNumber] = useState('07AABCG1234A1Z5');
   const [taxRate, setTaxRate] = useState('18');
+  const [upiId, setUpiId] = useState('restaurant@upi');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -118,8 +119,17 @@ export default function SettingsPage() {
             onChange={setTaxRate}
             placeholder="18"
           />
+          <SettingField
+            label="UPI ID for Payments"
+            value={upiId}
+            onChange={setUpiId}
+            placeholder="yourbusiness@upi"
+          />
           <p className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-            💡 Current tax rate of {taxRate}% will be applied to all bills.CGST and SGST will be split equally.
+            💡 Current tax rate of {taxRate}% will be applied to all bills. CGST and SGST will be split equally.
+          </p>
+          <p className="text-xs text-violet-600 bg-violet-50 p-3 rounded-lg border border-violet-200">
+            🔗 UPI QR codes will be generated for: <span className="font-mono font-bold">{upiId}</span>
           </p>
         </div>
       </Card>
