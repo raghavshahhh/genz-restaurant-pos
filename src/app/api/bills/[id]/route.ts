@@ -18,7 +18,7 @@ export async function PATCH(
 
     // Check if bill exists
     const bill = await prisma.bill.findUnique({
-      where: { id },
+      where: { id: id as string },
       include: {
         order: true,
       }
