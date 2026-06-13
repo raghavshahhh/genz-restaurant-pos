@@ -1,190 +1,253 @@
-import 'dotenv/config';
-import { prisma } from '../src/lib/prisma';
-import { hash } from 'bcryptjs';
+import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
-if (!process.env.DATABASE_URL) {
-  console.error("❌ ERROR: DATABASE_URL is missing in your .env file!");
-  console.error("Please add the Supabase URL from Vercel to your .env file and try again.");
-  process.exit(1);
-}
+const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting seed...');
+  console.log('🌱 Starting database seed...');
 
-  // Hash passwords for demo users
-  const adminPassword = await hash('GenZ2026!', 10);
-  const managerPassword = await hash('Manager2026!', 10);
-  const cashierPassword = await hash('Cashier2026!', 10);
-
-  // Create demo users
-  console.log('👤 Creating users...');
-  await prisma.user.createMany({
-    data: [
-      {
-        email: 'admin@genzrestaurant.com',
-        password: adminPassword,
-        name: 'Admin User',
-        role: 'ADMIN',
-      },
-      {
-        email: 'manager@genzrestaurant.com',
-        password: managerPassword,
-        name: 'Manager User',
-        role: 'STAFF',
-      },
-      {
-        email: 'cashier@genzrestaurant.com',
-        password: cashierPassword,
-        name: 'Cashier User',
-        role: 'STAFF',
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  // Create default restaurant
-  console.log('🏪 Creating restaurant...');
+  // Create Restaurant
   const restaurant = await prisma.restaurant.upsert({
-    where: { id: 'genz-restaurant' },
-    update: {
-      name: 'Gen-Z Restaurant',
-      address: 'Mahipalpur, New Delhi - 110037'
-    },
+    where: { id: '00000000-0000-0000-0000-000000000001' },
+    update: {},
     create: {
-      id: 'genz-restaurant',
-      name: 'Gen-Z Restaurant',
-      address: 'Mahipalpur, New Delhi - 110037',
+      id: '00000000-0000-0000-0000-000000000001',
+      name: 'GenZ Restaurant',
+      address: '123 Main Street, New Delhi, India 110001',
     },
   });
+  console.log('✅ Restaurant created:', restaurant.name);
 
-  // Create tables
-  console.log('🪑 Creating tables...');
-  await prisma.table.createMany({
-    data: [
-      { number: 1, capacity: 4, restaurantId: restaurant.id },
-      { number: 2, capacity: 2, restaurantId: restaurant.id },
-      { number: 3, capacity: 6, restaurantId: restaurant.id },
-      { number: 4, capacity: 4, restaurantId: restaurant.id },
-      { number: 5, capacity: 8, restaurantId: restaurant.id },
-      { number: 6, capacity: 2, restaurantId: restaurant.id },
-    ],
-    skipDuplicates: true,
+  // Create Admin User
+  const hashedPassword = await bcrypt.hash('admin123', 10);
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@genz.com' },
+    update: {},
+    create: {
+      email: 'admin@genz.com',
+      password: hashedPassword,
+      name: 'Admin User',
+      role: 'ADMIN',
+      restaurantId: restaurant.id,
+    },
   });
+  console.log('✅ Admin user created:', adminUser.email);
 
-  // Create menu items
-  console.log('🍽️ Creating menu items...');
-  await prisma.menuItem.createMany({
-    data: [
-      // Starters
-      {
-        name: 'Veg Spring Roll',
-        category: 'Starters',
-        price: 180,
-        imageUrl: '/images/spring-roll.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Chicken Wings',
-        category: 'Starters',
-        price: 250,
-        imageUrl: '/images/chicken-wings.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Paneer Tikka',
-        category: 'Starters',
-        price: 220,
-        imageUrl: '/images/paneer-tikka.jpg',
-        restaurantId: restaurant.id,
-      },
-      // Main Course
-      {
-        name: 'Butter Chicken',
-        category: 'Main Course',
-        price: 350,
-        imageUrl: '/images/butter-chicken.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Dal Makhani',
-        category: 'Main Course',
-        price: 280,
-        imageUrl: '/images/dal-makhani.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Paneer Butter Masala',
-        category: 'Main Course',
-        price: 320,
-        imageUrl: '/images/paneer-butter-masala.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Chicken Biryani',
-        category: 'Main Course',
-        price: 380,
-        imageUrl: '/images/chicken-biryani.jpg',
-        restaurantId: restaurant.id,
-      },
-      // Breads
-      {
-        name: 'Butter Naan',
-        category: 'Breads',
-        price: 60,
-        imageUrl: '/images/butter-naan.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Tandoori Roti',
-        category: 'Breads',
-        price: 40,
-        imageUrl: '/images/tandoori-roti.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Butter Roti',
-        category: 'Breads',
-        price: 50,
-        imageUrl: '/images/butter-roti.jpg',
-        restaurantId: restaurant.id,
-      },
-      // Beverages
-      {
-        name: 'Coca Cola',
-        category: 'Beverages',
-        price: 80,
-        imageUrl: '/images/coca-cola.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Fresh Lime Soda',
-        category: 'Beverages',
-        price: 60,
-        imageUrl: '/images/fresh-lime-soda.jpg',
-        restaurantId: restaurant.id,
-      },
-      {
-        name: 'Mango Lassi',
-        category: 'Beverages',
-        price: 120,
-        imageUrl: '/images/mango-lassi.jpg',
-        restaurantId: restaurant.id,
-      },
-    ],
-    skipDuplicates: true,
+  // Create Staff User
+  const staffPassword = await bcrypt.hash('staff123', 10);
+  const staffUser = await prisma.user.upsert({
+    where: { email: 'staff@genz.com' },
+    update: {},
+    create: {
+      email: 'staff@genz.com',
+      password: staffPassword,
+      name: 'Staff User',
+      role: 'STAFF',
+      restaurantId: restaurant.id,
+    },
   });
+  console.log('✅ Staff user created:', staffUser.email);
 
-  console.log('✅ Seed completed!');
-  console.log('');
-  console.log('📋 Demo Credentials:');
-  console.log('  Admin:    admin@genzrestaurant.com / GenZ2026!');
-  console.log('  Manager:  manager@genzrestaurant.com / Manager2026!');
-  console.log('  Cashier:  cashier@genzrestaurant.com / Cashier2026!');
+  // Create Tables
+  const tableData = [
+    { number: 1, capacity: 2 },
+    { number: 2, capacity: 2 },
+    { number: 3, capacity: 4 },
+    { number: 4, capacity: 4 },
+    { number: 5, capacity: 4 },
+    { number: 6, capacity: 6 },
+    { number: 7, capacity: 6 },
+    { number: 8, capacity: 8 },
+    { number: 9, capacity: 2 },
+    { number: 10, capacity: 4 },
+  ];
+
+  for (const table of tableData) {
+    await prisma.table.upsert({
+      where: {
+        restaurantId_number: {
+          restaurantId: restaurant.id,
+          number: table.number,
+        },
+      },
+      update: {},
+      create: {
+        number: table.number,
+        capacity: table.capacity,
+        status: 'AVAILABLE',
+        restaurantId: restaurant.id,
+      },
+    });
+  }
+  console.log('✅ Created 10 tables');
+
+  // Create Menu Items
+  const menuItems = [
+    // Starters
+    {
+      name: 'Paneer Tikka',
+      category: 'Starters',
+      price: 249,
+      imageUrl: '/images/paneer-tikka.jpg',
+      available: true,
+    },
+    {
+      name: 'Veg Spring Rolls',
+      category: 'Starters',
+      price: 199,
+      imageUrl: '/images/spring-rolls.jpg',
+      available: true,
+    },
+    {
+      name: 'Chicken Wings',
+      category: 'Starters',
+      price: 299,
+      imageUrl: '/images/chicken-wings.jpg',
+      available: true,
+    },
+    {
+      name: 'Crispy Corn',
+      category: 'Starters',
+      price: 179,
+      imageUrl: '/images/crispy-corn.jpg',
+      available: true,
+    },
+    {
+      name: 'French Fries',
+      category: 'Starters',
+      price: 149,
+      imageUrl: '/images/french-fries.jpg',
+      available: true,
+    },
+    // Mains
+    {
+      name: 'Butter Chicken',
+      category: 'Mains',
+      price: 399,
+      imageUrl: '/images/butter-chicken.jpg',
+      available: true,
+    },
+    {
+      name: 'Dal Makhani',
+      category: 'Mains',
+      price: 299,
+      imageUrl: '/images/dal-makhani.jpg',
+      available: true,
+    },
+    {
+      name: 'Paneer Butter Masala',
+      category: 'Mains',
+      price: 349,
+      imageUrl: '/images/paneer-butter-masala.jpg',
+      available: true,
+    },
+    {
+      name: 'Veg Biryani',
+      category: 'Mains',
+      price: 279,
+      imageUrl: '/images/veg-biryani.jpg',
+      available: true,
+    },
+    {
+      name: 'Chicken Biryani',
+      category: 'Mains',
+      price: 349,
+      imageUrl: '/images/chicken-biryani.jpg',
+      available: true,
+    },
+    {
+      name: 'Margherita Pizza',
+      category: 'Mains',
+      price: 299,
+      imageUrl: '/images/margherita-pizza.jpg',
+      available: true,
+    },
+    {
+      name: 'Pasta Alfredo',
+      category: 'Mains',
+      price: 329,
+      imageUrl: '/images/pasta-alfredo.jpg',
+      available: true,
+    },
+    // Desserts
+    {
+      name: 'Gulab Jamun',
+      category: 'Desserts',
+      price: 129,
+      imageUrl: '/images/gulab-jamun.jpg',
+      available: true,
+    },
+    {
+      name: 'Ice Cream',
+      category: 'Desserts',
+      price: 99,
+      imageUrl: '/images/ice-cream.jpg',
+      available: true,
+    },
+    {
+      name: 'Chocolate Brownie',
+      category: 'Desserts',
+      price: 149,
+      imageUrl: '/images/brownie.jpg',
+      available: true,
+    },
+    {
+      name: 'Ras Malai',
+      category: 'Desserts',
+      price: 139,
+      imageUrl: '/images/ras-malai.jpg',
+      available: true,
+    },
+    // Beverages
+    {
+      name: 'Fresh Lime Soda',
+      category: 'Beverages',
+      price: 79,
+      imageUrl: '/images/lime-soda.jpg',
+      available: true,
+    },
+    {
+      name: 'Mango Lassi',
+      category: 'Beverages',
+      price: 99,
+      imageUrl: '/images/mango-lassi.jpg',
+      available: true,
+    },
+    {
+      name: 'Cold Coffee',
+      category: 'Beverages',
+      price: 119,
+      imageUrl: '/images/cold-coffee.jpg',
+      available: true,
+    },
+    {
+      name: 'Masala Chai',
+      category: 'Beverages',
+      price: 49,
+      imageUrl: '/images/masala-chai.jpg',
+      available: true,
+    },
+  ];
+
+  for (const item of menuItems) {
+    await prisma.menuItem.create({
+      data: {
+        ...item,
+        restaurantId: restaurant.id,
+      },
+    });
+  }
+  console.log('✅ Created 20 menu items');
+
+  console.log('🎉 Database seeding completed successfully!');
+  console.log('\n📝 Login Credentials:');
+  console.log('   Admin: admin@genz.com / admin123');
+  console.log('   Staff: staff@genz.com / staff123');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('❌ Error during seeding:', e);
     process.exit(1);
   })
   .finally(async () => {

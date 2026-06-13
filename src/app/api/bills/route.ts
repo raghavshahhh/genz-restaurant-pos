@@ -47,12 +47,62 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { orderId, tableId, subtotal, tax, discount = 0, total } = body;
+    const { orderId } = body;
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: 'orderId is required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if order exists and is completed
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            menuItem: true
+          }
+        },
+        table: true
+      }
+    });
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    if (order.status !== 'COMPLETED') {
+      return NextResponse.json(
+        { error: 'Can only generate bill for completed orders' },
+        { status: 400 }
+      );
+    }
+
+    // Check if bill already exists
+    const existingBill = await prisma.bill.findUnique({
+      where: { orderId }
+    });
+
+    if (existingBill) {
+      return NextResponse.json(
+        { error: 'Bill already exists for this order' },
+        { status: 400 }
+      );
+    }
+
+    // Calculate bill amounts
+    const subtotal = order.totalAmount;
+    const taxRate = 0.18; // 18% GST
+    const tax = subtotal * taxRate;
+    const discount = 0; // Can be added later
+    const total = subtotal + tax - discount;
 
     const bill = await prisma.bill.create({
       data: {
         orderId,
-        tableId,
+        tableId: order.tableId,
         subtotal,
         tax,
         discount,
@@ -66,7 +116,8 @@ export async function POST(request: Request) {
               include: {
                 menuItem: true
               }
-            }
+            },
+            table: true
           }
         }
       }
@@ -75,6 +126,9 @@ export async function POST(request: Request) {
     return NextResponse.json(bill, { status: 201 });
   } catch (error) {
     console.error('Error creating bill:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create bill. Please try again.' },
+      { status: 500 }
+    );
   }
 }

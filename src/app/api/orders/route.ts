@@ -42,7 +42,54 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { tableId, items, customerName, customerPhone } = body;
 
-    // Fetch all menu items to get prices
+    // Input validation
+    if (!tableId || !items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Missing required fields: tableId and items are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate quantities
+    for (const item of items) {
+      if (!item.menuItemId) {
+        return NextResponse.json(
+          { error: 'Each item must have a menuItemId' },
+          { status: 400 }
+        );
+      }
+      if (!item.quantity || item.quantity < 1 || item.quantity > 1000) {
+        return NextResponse.json(
+          { error: 'Quantity must be between 1 and 1000' },
+          { status: 400 }
+        );
+      }
+      // Sanitize special instructions (basic XSS prevention)
+      if (item.specialInstructions) {
+        item.specialInstructions = item.specialInstructions
+          .replace(/<[^>]*>/g, '') // Remove HTML tags
+          .replace(/[<>'"]/g, '') // Remove potentially dangerous characters
+          .substring(0, 500); // Limit length
+      }
+    }
+
+    // Check table availability and lock it
+    const table = await prisma.table.findUnique({
+      where: { id: tableId },
+    });
+
+    if (!table) {
+      return NextResponse.json({ error: 'Table not found' }, { status: 404 });
+    }
+
+    if (table.status !== 'AVAILABLE') {
+      return NextResponse.json(
+        { error: 'Table is not available' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch all menu items to get prices and validate
     const menuItems = await prisma.menuItem.findMany({
       where: {
         id: {
@@ -50,6 +97,13 @@ export async function POST(request: Request) {
         }
       }
     });
+
+    if (menuItems.length !== items.length) {
+      return NextResponse.json(
+        { error: 'One or more menu items not found' },
+        { status: 404 }
+      );
+    }
 
     // Create a map for quick price lookup
     const priceMap = new Map(menuItems.map(m => [m.id, m.price]));
@@ -63,35 +117,50 @@ export async function POST(request: Request) {
         menuItemId: item.menuItemId,
         quantity: item.quantity,
         price: price,
-        specialInstructions: item.specialInstructions
+        specialInstructions: item.specialInstructions || null
       };
     });
 
-    const order = await prisma.order.create({
-      data: {
-        tableId,
-        customerName,
-        customerPhone,
-        totalAmount,
-        status: 'PENDING',
-        paymentStatus: 'PENDING',
-        items: {
-          create: orderItemsData
-        }
-      },
-      include: {
-        table: true,
-        items: {
-          include: {
-            menuItem: true
+    // Create order and update table status in a transaction
+    const order = await prisma.$transaction(async (tx) => {
+      // Create the order
+      const newOrder = await tx.order.create({
+        data: {
+          tableId,
+          customerName: customerName || 'Walk-in Customer',
+          customerPhone: customerPhone || null,
+          totalAmount,
+          status: 'PENDING',
+          paymentStatus: 'PENDING',
+          items: {
+            create: orderItemsData
+          }
+        },
+        include: {
+          table: true,
+          items: {
+            include: {
+              menuItem: true
+            }
           }
         }
-      }
+      });
+
+      // Update table status to OCCUPIED
+      await tx.table.update({
+        where: { id: tableId },
+        data: { status: 'OCCUPIED' }
+      });
+
+      return newOrder;
     });
 
     return NextResponse.json(order, { status: 201 });
   } catch (error) {
     console.error('Error creating order:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create order. Please try again.' },
+      { status: 500 }
+    );
   }
 }

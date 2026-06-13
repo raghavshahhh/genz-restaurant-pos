@@ -402,16 +402,16 @@ export default function BillsPage() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>CGST (9%)</span>
-                  <span>₹{(selectedBill.tax / 2).toFixed(2)}</span>
+                  <span>₹{((selectedBill.tax || 0) / 2).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>SGST (9%)</span>
-                  <span>₹{(selectedBill.tax / 2).toFixed(2)}</span>
+                  <span>₹{((selectedBill.tax || 0) / 2).toFixed(2)}</span>
                 </div>
-                {selectedBill.discount > 0 && (
+                {(selectedBill.discount || 0) > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Discount</span>
-                    <span>-₹{selectedBill.discount.toFixed(2)}</span>
+                    <span>-₹{(selectedBill.discount || 0).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-black text-lg mt-3 pt-3 border-t-2 border-gray-300 bg-gradient-to-r from-orange-50 to-amber-50 p-2 rounded">

@@ -50,18 +50,76 @@ export async function PATCH(
     const body = await request.json();
     const { status, paymentMethod } = body;
 
-    const bill = await prisma.bill.update({
+    if (!status) {
+      return NextResponse.json(
+        { error: 'status is required' },
+        { status: 400 }
+      );
+    }
+
+    // Get the bill with order and table info
+    const existingBill = await prisma.bill.findUnique({
       where: { id: params.id },
-      data: {
-        status,
-        paymentMethod,
-        paidAt: status === 'PAID' ? new Date() : null
+      include: {
+        order: {
+          include: {
+            table: true
+          }
+        }
       }
     });
 
-    return NextResponse.json(bill);
+    if (!existingBill) {
+      return NextResponse.json({ error: 'Bill not found' }, { status: 404 });
+    }
+
+    // Update bill and free table in a transaction if payment is confirmed
+    const result = await prisma.$transaction(async (tx) => {
+      // Update the bill
+      const updatedBill = await tx.bill.update({
+        where: { id: params.id },
+        data: {
+          status,
+          paymentMethod: paymentMethod || null,
+          paidAt: status === 'PAID' ? new Date() : null
+        },
+        include: {
+          order: {
+            include: {
+              items: {
+                include: {
+                  menuItem: true
+                }
+              },
+              table: true
+            }
+          }
+        }
+      });
+
+      // If bill is paid, update order payment status and free the table
+      if (status === 'PAID') {
+        await tx.order.update({
+          where: { id: existingBill.orderId },
+          data: { paymentStatus: 'PAID' }
+        });
+
+        // Free the table
+        await tx.table.update({
+          where: { id: existingBill.order.tableId },
+          data: { status: 'AVAILABLE' }
+        });
+      }
+
+      return updatedBill;
+    });
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error updating bill:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update bill. Please try again.' },
+      { status: 500 }
+    );
   }
 }

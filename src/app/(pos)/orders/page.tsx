@@ -89,6 +89,7 @@ export default function OrdersPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTable, orderItems, isSubmitting]);
 
   const filteredMenuItems = selectedCategory === 'All' 
