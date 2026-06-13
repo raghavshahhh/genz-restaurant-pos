@@ -28,7 +28,7 @@ export const authOptions: NextAuthOptions = {
       }
     })
   ],
-  pages: { signIn: "/auth/login" },
+  pages: { signIn: "/login" },
   callbacks: {
     jwt: ({ token, user }) => {
       const extendedUser = user as ExtendedUser | undefined;

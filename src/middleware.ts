@@ -10,7 +10,8 @@ export async function middleware(req: NextRequest) {
   if (
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
-    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
     pathname.startsWith('/favicon.ico')
   ) {
     return NextResponse.next();
@@ -19,12 +20,12 @@ export async function middleware(req: NextRequest) {
   // Redirect to login if not authenticated (including homepage)
   if (!token) {
     const url = req.nextUrl.clone();
-    url.pathname = '/auth/login';
+    url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
   // Redirect authenticated users away from login page
-  if (pathname === '/auth/login' && token) {
+  if (pathname === '/login' && token) {
     const url = req.nextUrl.clone();
     url.pathname = '/';
     return NextResponse.redirect(url);

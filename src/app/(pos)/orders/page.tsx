@@ -62,6 +62,35 @@ export default function OrdersPage() {
     }
   };
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + S to place order
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (selectedTable && orderItems.length > 0 && !isSubmitting) {
+          handlePlaceOrder();
+        } else {
+          toast.info('Cannot place order: Select table and items first');
+        }
+      }
+      
+      // Escape to clear current order
+      if (e.key === 'Escape') {
+        if (orderItems.length > 0 || selectedTable) {
+          setOrderItems([]);
+          setSelectedTable(null);
+          setCustomerName('');
+          setCustomerPhone('');
+          toast.info('Order cleared');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTable, orderItems, isSubmitting]);
+
   const filteredMenuItems = selectedCategory === 'All' 
     ? menuItems 
     : menuItems.filter(item => item.category === selectedCategory);

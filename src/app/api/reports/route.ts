@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkAuth } from '@/lib/api-auth';
 
 // GET reports data
 export async function GET(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(request.url);
     const startDateStr = searchParams.get('startDate');

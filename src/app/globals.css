@@ -6,6 +6,10 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
+  --bg-base: #000000;
+  --accent: #a3e635;
+  --radius-card: 20px;
+  --shadow-glow: 0 0 40px rgba(163,230,53,0.15);
 }
 
 @media (prefers-color-scheme: dark) {

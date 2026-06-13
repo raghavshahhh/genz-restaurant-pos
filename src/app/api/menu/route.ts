@@ -1,7 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
@@ -20,6 +24,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { name, category, price, imageUrl, available, restaurantId } = body;

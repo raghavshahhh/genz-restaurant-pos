@@ -1,7 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/api-auth';
 
 export async function GET() {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const tables = await prisma.table.findMany({
       orderBy: { number: 'asc' },
@@ -15,6 +19,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { number, capacity, restaurantId } = body;

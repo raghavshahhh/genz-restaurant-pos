@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import ReactLenis from 'lenis/react';
+import { GrainOverlay } from '@/app/_components/scroll/grain-overlay';
+import { CustomCursor } from '@/app/_components/scroll/custom-cursor';
 
 const inter = Inter({
   variable: "--font-inter-sans",
@@ -23,11 +26,23 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full flex bg-gray-50 font-sans">
-        <Sidebar />
-        <main className="flex-1 flex flex-col overflow-y-auto p-6">
-          {children}
-        </main>
-        <Toaster richColors position="top-right" />
+        <ReactLenis
+          root
+          options={{
+            duration: 1.2,
+            orientation: 'vertical' as const,
+            gestureOrientation: 'vertical' as const,
+            smoothWheel: true,
+          }}
+        >
+          <GrainOverlay />
+          <CustomCursor />
+          <Sidebar />
+          <main className="flex-1 flex flex-col overflow-y-auto p-6">
+            {children}
+          </main>
+          <Toaster richColors position="top-right" />
+        </ReactLenis>
       </body>
     </html>
   );

@@ -1,7 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/api-auth';
 
 export async function GET(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -31,20 +35,37 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { tableId, items, customerName, customerPhone } = body;
 
-    // Calculate total
-    let totalAmount = 0;
-    for (const item of items) {
-      const menuItem = await prisma.menuItem.findUnique({
-        where: { id: item.menuItemId }
-      });
-      if (menuItem) {
-        totalAmount += menuItem.price * item.quantity;
+    // Fetch all menu items to get prices
+    const menuItems = await prisma.menuItem.findMany({
+      where: {
+        id: {
+          in: items.map((i: any) => i.menuItemId)
+        }
       }
-    }
+    });
+
+    // Create a map for quick price lookup
+    const priceMap = new Map(menuItems.map(m => [m.id, m.price]));
+
+    // Calculate total amount and prepare items for creation
+    let totalAmount = 0;
+    const orderItemsData = items.map((item: any) => {
+      const price = priceMap.get(item.menuItemId) || 0;
+      totalAmount += price * item.quantity;
+      return {
+        menuItemId: item.menuItemId,
+        quantity: item.quantity,
+        price: price,
+        specialInstructions: item.specialInstructions
+      };
+    });
 
     const order = await prisma.order.create({
       data: {
@@ -55,12 +76,7 @@ export async function POST(request: Request) {
         status: 'PENDING',
         paymentStatus: 'PENDING',
         items: {
-          create: items.map((item: any) => ({
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-            price: 0, // Will be updated
-            specialInstructions: item.specialInstructions
-          }))
+          create: orderItemsData
         }
       },
       include: {

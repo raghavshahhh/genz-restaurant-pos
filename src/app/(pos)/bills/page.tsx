@@ -189,66 +189,91 @@ export default function BillsPage() {
         </p>
       </div>
 
-      {/* UPI Payment Modal */}
+      {/* Unified Payment Modal */}
       {showPaymentModal && selectedBill && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-100 to-pink-100 flex items-center justify-center text-3xl mx-auto mb-4">
-                💳
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-gray-900">Payment Collection</h2>
+                <p className="text-sm text-gray-500 mt-1">Select payment method for Bill #{selectedBill.id}</p>
               </div>
-              <h2 className="text-2xl font-black text-gray-900">Scan to Pay</h2>
-              <p className="text-sm text-gray-500 mt-1">UPI QR Code for payment</p>
+              <Button onClick={() => setShowPaymentModal(false)} variant="outline" size="sm">✕</Button>
             </div>
 
-            {/* QR Code Section */}
-            <div className="bg-gradient-to-br from-violet-50 to-pink-50 rounded-2xl p-6 mb-6">
-              <div className="bg-white p-4 rounded-xl shadow-lg flex justify-center">
-                <QRCodeSVG
-                  value={generateUPIPayload(selectedBill)}
-                  size={220}
-                  level="H"
-                  includeMargin={true}
-                />
+            {/* Payment Details Summary */}
+            <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">Total Amount Due</span>
+                <span className="font-black text-2xl text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-pink-600">
+                  ₹{selectedBill.total.toFixed(2)}
+                </span>
               </div>
-              <p className="text-center text-xs text-gray-600 mt-4 font-medium">
-                Scan with any UPI app (GPay, PhonePe, Paytm, BHIM)
-              </p>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Table {selectedBill.order.table?.number}</span>
+                <span>{selectedBill.order.customerName || 'Walk-in'}</span>
+              </div>
             </div>
 
-            {/* Payment Details */}
+            {/* Payment Method Selection */}
             <div className="space-y-3 mb-6">
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">Bill Amount</span>
-                <span className="font-bold text-gray-900">₹{selectedBill.total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">Table Number</span>
-                <span className="font-bold text-gray-900">Table {selectedBill.order.table?.number}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm text-gray-600">Customer</span>
-                <span className="font-bold text-gray-900">{selectedBill.order.customerName || 'Walk-in'}</span>
+              <h3 className="text-sm font-bold text-gray-700">Select Method</h3>
+              
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setPaymentConfirmed('CASH' as any)}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
+                    paymentConfirmed === ('CASH' as any) ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-green-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-2xl">💵</span>
+                  <span className="text-xs font-bold">Cash</span>
+                </button>
+                <button
+                  onClick={() => setPaymentConfirmed('CARD' as any)}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
+                    paymentConfirmed === ('CARD' as any) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-2xl">💳</span>
+                  <span className="text-xs font-bold">Card</span>
+                </button>
+                <button
+                  onClick={() => setPaymentConfirmed('UPI' as any)}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${
+                    paymentConfirmed === ('UPI' as any) ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-violet-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="text-2xl">📱</span>
+                  <span className="text-xs font-bold">UPI</span>
+                </button>
               </div>
             </div>
+
+            {/* UPI QR Code Section */}
+            {paymentConfirmed === ('UPI' as any) && (
+              <div className="bg-gradient-to-br from-violet-50 to-pink-50 rounded-xl p-4 mb-6 flex flex-col items-center animate-fade-in">
+                <div className="bg-white p-2 rounded-lg shadow-sm mb-2">
+                  <QRCodeSVG
+                    value={generateUPIPayload(selectedBill)}
+                    size={160}
+                    level="H"
+                    includeMargin={true}
+                  />
+                </div>
+                <p className="text-xs text-center text-gray-600 font-medium">Scan to pay with any UPI app</p>
+              </div>
+            )}
 
             {/* Actions */}
-            <div className="flex gap-3">
-              <Button
-                onClick={() => {
-                  handleMarkPaid(selectedBill.id, 'UPI');
-                }}
-                variant="gradient"
-                className="flex-1 h-12 text-lg"
-                disabled={!paymentConfirmed}
-              >
-                ✓ Confirm Payment Received
-              </Button>
-            </div>
-
-            <p className="text-center text-xs text-gray-500 mt-4">
-              ⚠️ Only confirm after verifying payment in your UPI app
-            </p>
+            <Button
+              onClick={() => handleMarkPaid(selectedBill.id, paymentConfirmed as any)}
+              variant="gradient"
+              className="w-full h-12 text-lg font-bold"
+              disabled={!paymentConfirmed}
+            >
+              Confirm {paymentConfirmed ? String(paymentConfirmed) : ''} Payment
+            </Button>
           </div>
         </div>
       )}
@@ -430,20 +455,14 @@ export default function BillsPage() {
               {selectedBill.status === 'PENDING' && (
                 <>
                   <Button
-                    onClick={() => handleInitiatePayment(selectedBill)}
+                    onClick={() => {
+                      setPaymentConfirmed(false);
+                      setShowPaymentModal(true);
+                    }}
                     variant="gradient"
                     className="bg-gradient-to-r from-violet-600 to-pink-600"
                   >
-                    💳 Pay via UPI
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      const paymentMethod = prompt('Enter payment method (cash, card, etc.)') || 'cash';
-                      handleMarkPaid(selectedBill.id, paymentMethod);
-                    }}
-                    variant="outline"
-                  >
-                    Cash/Card
+                    💳 Make Payment
                   </Button>
                   <Button
                     onClick={handlePrintBill}

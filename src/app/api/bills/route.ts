@@ -1,8 +1,12 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/api-auth';
 
 // GET bills with optional filtering
 export async function GET(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const { searchParams } = new URL(request.url);
     const statusParam = searchParams.get('status');
@@ -38,6 +42,9 @@ export async function GET(request: Request) {
 
 // POST create new bill
 export async function POST(request: Request) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { orderId, tableId, subtotal, tax, discount = 0, total } = body;

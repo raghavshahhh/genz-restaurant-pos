@@ -112,6 +112,43 @@ export default function KOTPage() {
     }
   };
 
+  const handlePrintTicket = (order: OrderWithItems) => {
+    const printWindow = window.open('', '', 'height=600,width=400');
+    if (!printWindow) return;
+
+    const itemsHtml = order.items.map((item: any) => `
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-weight: bold;">${item.quantity}x ${item.menuItem.name}</span>
+      </div>
+      ${item.specialInstructions ? `<div style="font-size: 12px; margin-left: 16px;">⚠️ ${item.specialInstructions}</div>` : ''}
+    `).join('');
+
+    printWindow.document.write(`
+      <html><head><title>KOT #${order.id.slice(-4).toUpperCase()}</title>
+      <style>
+        body { font-family: monospace; padding: 10px; max-width: 300px; margin: 0 auto; }
+        .text-center { text-align: center; }
+        .border-y { border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; margin: 10px 0; }
+        h2 { margin: 0 0 5px 0; }
+      </style>
+      </head><body onload="window.print(); window.close();">
+      <div class="text-center">
+        <h2>KITCHEN TICKET</h2>
+        <h3>Table ${order.table?.number}</h3>
+      </div>
+      <div class="border-y">
+        <div>Ticket: #${order.id.slice(-4).toUpperCase()}</div>
+        <div>Time: ${new Date(order.createdAt).toLocaleTimeString()}</div>
+        ${order.customerName ? `<div>Name: ${order.customerName}</div>` : ''}
+      </div>
+      <div style="margin-top: 15px;">
+        ${itemsHtml}
+      </div>
+      </body></html>
+    `);
+    printWindow.document.close();
+  };
+
   if (loading && Object.keys(orders).length === 0) {
     return (
       <div className="min-h-[600px] flex items-center justify-center">
@@ -219,11 +256,11 @@ export default function KOTPage() {
                     </div>
 
                     {/* Action buttons */}
-                    <div className="mt-5 pt-4 border-t border-gray-100 pl-2">
+                    <div className="mt-5 pt-4 border-t border-gray-100 pl-2 space-y-2">
                       {order.status === 'PENDING' && (
                         <Button
                           onClick={() => handleUpdateStatus(order.id, 'PREPARING')}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 text-md shadow-lg shadow-blue-500/30 rounded-xl"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-10 text-sm shadow-lg shadow-blue-500/30 rounded-xl"
                         >
                           👨‍🍳 Start Preparing
                         </Button>
@@ -231,7 +268,7 @@ export default function KOTPage() {
                       {order.status === 'PREPARING' && (
                         <Button
                           onClick={() => handleUpdateStatus(order.id, 'READY')}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 text-md shadow-lg shadow-green-500/30 rounded-xl"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-10 text-sm shadow-lg shadow-green-500/30 rounded-xl"
                         >
                           🔔 Mark as Ready
                         </Button>
@@ -240,11 +277,19 @@ export default function KOTPage() {
                         <Button
                           onClick={() => handleUpdateStatus(order.id, 'SERVED')}
                           variant="outline"
-                          className="w-full h-12 font-bold text-gray-700 border-2 border-gray-200 hover:bg-gray-50 rounded-xl"
+                          className="w-full h-10 font-bold text-sm text-gray-700 border-2 border-gray-200 hover:bg-gray-50 rounded-xl"
                         >
                           🍽️ Mark as Served
                         </Button>
                       )}
+                      
+                      <Button
+                        onClick={() => handlePrintTicket(order)}
+                        variant="ghost"
+                        className="w-full h-10 font-bold text-sm text-gray-600 hover:bg-gray-100 rounded-xl mt-2"
+                      >
+                        🖨️ Print Ticket
+                      </Button>
                     </div>
                   </div>
                 ))}

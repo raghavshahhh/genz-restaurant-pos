@@ -1,10 +1,14 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/api-auth';
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const order = await prisma.order.findUnique({
       where: { id: params.id },
@@ -31,6 +35,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const auth = await checkAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { status, paymentStatus } = body;

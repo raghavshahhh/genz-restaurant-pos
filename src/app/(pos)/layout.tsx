@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { IconMarquee } from '@/app/_components/scroll/icon-marquee';
 
 export const metadata: Metadata = {
   title: "Gen-Z Restaurant POS",
@@ -10,6 +11,13 @@ export default function POSLayout({
 }: {
   children: React.ReactNode
 }) {
+  const restaurantIcons = [
+    '🍽️', '🍴', '🥘', '🍲', '🍕', '🍔', '🌮', '🌯', '🥗', '🍰',
+    '☕', '🍵', '🍶', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃',
+    '🥤', '🧃', '🧋', '🧉', '🧊', '🍞', '🥐', '🥖', '🥨', '🥯',
+    '🥞', '🧇', '🥚', '🍳', '🥓', '🥩', '🍗', '🍖', '🦞', '🦐'
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm border-b">
@@ -40,6 +48,9 @@ export default function POSLayout({
         </div>
       </nav>
       <main className="flex flex-col min-h-[calc(100vh-16rem)]">
+        <div className="mb-4">
+          <IconMarquee items={restaurantIcons} speed={40} reverse={false} />
+        </div>
         <div className="overflow-y-auto flex-1 pb-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
             {children}
