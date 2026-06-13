@@ -1,77 +1,249 @@
-# Gen-Z Restaurant POS (RagsPOS v1)
+# 🍽️ GenZ Restaurant POS System
 
-A Point of Sale system built for Gen-Z restaurants using the RAGSBUILD-generated stack.
+A modern, full-stack Point of Sale (POS) system built for restaurants with Next.js 14, Prisma, PostgreSQL, and Supabase.
 
-## Tech Stack
-- **Frontend**: Next.js 14 (React) + Tailwind CSS
-- **Backend**: Next.js API Routes with Prisma ORM
-- **Database**: PostgreSQL (via Supabase in production)
-- **Authentication**: Placeholder (can be extended with NextAuth)
-- **Realtime**: Ready for Supabase Realtime subscriptions
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/raghavshahhh/genz-restaurant-pos)
 
-## Features Implemented
-1. **Table Management** - Add, view, and manage restaurant tables with status tracking
-2. **Menu Management** - Full CRUD for menu items with categories, pricing, and availability
-3. **Order Taking** - Create orders for tables with multiple items, special instructions, and customer info
-4. **KOT (Kitchen Order Ticket)** - Real-time kitchen display with order timers and status updates
-5. **Bill Generation** - Generate bills with tax calculations, payment tracking, and print functionality
-6. **Sales Reports** - Daily sales reports with analytics, top-selling items, and payment method breakdowns
+## ✨ Features
 
-## Quick Start
+### 🏠 Complete Restaurant Management
+- **Dashboard** - Real-time statistics and quick actions
+- **Tables** - Manage table status (Available/Occupied/Reserved)
+- **Menu** - 179+ items with full CRUD operations
+- **Orders** - Place orders with validation and special instructions
+- **KOT** - Kitchen Order Tickets with auto-refresh and timers
+- **Bills** - Generate bills with multiple payment methods
+- **Reports** - Sales analytics and top-selling items
+- **Settings** - Restaurant configuration and preferences
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+### 🔐 Authentication & Security
+- NextAuth.js integration
+- Role-based access (Admin/Staff)
+- Password hashing with bcrypt
+- Protected API routes
+- Input validation and sanitization
 
-2. Set up environment variables in `.env`:
-   ```bash
-   DATABASE_URL="postgresql://postgres:password@localhost:5432/postgres?schema=public"
-   NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-   NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
-   ```
+### 💳 Payment Processing
+- Cash payments
+- Card payments
+- UPI payments with QR code
+- Bill generation and tracking
+- Tax calculation (18% GST)
 
-3. Generate Prisma client:
-   ```bash
-   npx prisma generate
-   ```
+### 🎨 Modern UI/UX
+- Responsive design (mobile, tablet, desktop)
+- Animated transitions (Framer Motion, GSAP)
+- Toast notifications
+- Loading skeletons
+- Print-friendly receipts
+- Dark mode ready
 
-4. Push schema to database (optional - for development):
-   ```bash
-   npx prisma db push
-   ```
+## 🚀 Tech Stack
 
-5. Start development server:
-   ```bash
-   npm run dev
-   ```
+- **Frontend:** Next.js 14 (App Router), React 18, TypeScript
+- **Backend:** Next.js API Routes, Prisma ORM
+- **Database:** PostgreSQL (Supabase)
+- **Authentication:** NextAuth.js
+- **Styling:** Tailwind CSS, Radix UI
+- **State:** React Query
+- **Forms:** React Hook Form + Zod validation
+- **Deployment:** Vercel
 
-6. Visit http://localhost:3000 to access the POS system
+## 📋 Prerequisites
 
-## Project Structure
-- `src/app/(pos)/` - All POS-related pages (tables, menu, orders, KOT, bills, reports)
-- `src/app/(auth)/` - Authentication pages (login, register)
-- `src/app/(dashboard)/` - Dashboard placeholder
-- `src/app/(marketing)/` - Marketing placeholder
-- `src/components/` - Reusable UI components (forms, buttons, inputs, etc.)
-- `lib/prisma.ts` - Prisma client singleton
-- `prisma/schema.prisma` - Database schema definition
+- Node.js 18+ and npm
+- PostgreSQL database (or Supabase account)
+- Git
 
-## API Routes
-The system uses Next.js API routes implicitly through React Server Components and direct database access via Prisma.
+## 🛠️ Installation
 
-## Future Enhancements
-- Authentication system (NextAuth or custom)
-- Real-time updates with Supabase Realtime for KOT screens
-- Role-based access control (server, manager, admin)
-- Integration with payment gateways (Razorpay, Stripe, UPI)
-- Receipt printing via thermal printers
-- Inventory management
-- Customer relationship management (CRM)
-- Online ordering integration
+### 1. Clone the repository
+```bash
+git clone https://github.com/raghavshahhh/genz-restaurant-pos.git
+cd genz-restaurant-pos
+```
 
-## Notes
-- This is a MVP implementation focusing on core POS functionality
-- Error handling and validation can be enhanced
-- Styling can be further customized with additional Tailwind configurations
-- For production, consider adding proper authentication and authorization
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Set up environment variables
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your database credentials:
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/restaurant_pos"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-secret-key-here"
+```
+
+### 4. Set up database
+```bash
+# Push schema to database
+npm run db:push
+
+# Seed database with menu items and test data
+npm run db:seed
+```
+
+### 5. Run development server
+```bash
+npm run dev
+```
+
+Visit [http://localhost:3000](http://localhost:3000)
+
+## 🔑 Default Credentials
+
+After seeding, login with:
+- **Email:** `admin@genz.com`
+- **Password:** `admin123`
+
+Or:
+- **Email:** `staff@genz.com`
+- **Password:** `staff123`
+
+## 📦 Project Structure
+
+```
+genz-restaurant-pos/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/          # Login, Register
+│   │   ├── (pos)/           # POS pages (tables, menu, orders, etc.)
+│   │   ├── api/             # API routes
+│   │   └── page.tsx         # Dashboard
+│   ├── components/          # Reusable components
+│   ├── lib/                 # Utilities and configurations
+│   └── types/               # TypeScript types
+├── prisma/
+│   ├── schema.prisma        # Database schema
+│   └── seed.ts              # Seed script (179 menu items)
+├── public/                  # Static assets
+└── ...config files
+```
+
+## 🗄️ Database Schema
+
+- **Restaurant** - Restaurant information
+- **User** - Staff and admin accounts
+- **Table** - Restaurant tables with status
+- **MenuItem** - Menu items with categories
+- **Order** - Customer orders
+- **OrderItem** - Individual items in orders
+- **Bill** - Generated bills with payment info
+
+## 🔧 Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+npm run db:push      # Push schema to database
+npm run db:seed      # Seed database with data
+```
+
+## 🌐 Deployment
+
+### Deploy to Vercel (Recommended)
+
+1. Push code to GitHub
+2. Import project in Vercel
+3. Add environment variables:
+   - `DATABASE_URL` (from Supabase)
+   - `DIRECT_URL` (from Supabase)
+   - `NEXTAUTH_URL` (your Vercel URL)
+   - `NEXTAUTH_SECRET` (generate with `openssl rand -base64 32`)
+4. Deploy!
+
+**Detailed guide:** See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+
+### Quick Deploy Script
+```bash
+./deploy.sh
+```
+
+## 📱 Screenshots
+
+### Dashboard
+Real-time stats with quick actions to all modules.
+
+### Orders
+Step-by-step order placement with table selection and menu browsing.
+
+### KOT (Kitchen)
+Live kitchen display with timers and status updates.
+
+### Bills
+Generate bills, accept payments, and print receipts.
+
+## 🧪 Testing Workflow
+
+1. **Login** with admin credentials
+2. **View Dashboard** - Check stats
+3. **Tables** - Verify table status
+4. **Menu** - Browse 179 items
+5. **Orders** - Place test order
+6. **KOT** - View in kitchen
+7. **Update Status** - Preparing → Ready → Served
+8. **Bills** - Generate and pay bill
+9. **Reports** - Check sales data
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 👨‍💻 Author
+
+**Raghav Shah**
+- GitHub: [@raghavshahhh](https://github.com/raghavshahhh)
+- Repository: [genz-restaurant-pos](https://github.com/raghavshahhh/genz-restaurant-pos)
+
+## 🙏 Acknowledgments
+
+- Menu data from GenZ Restaurant, Mahipalpur
+- Built with Next.js, Prisma, and Supabase
+- UI components from Radix UI and Tailwind CSS
+
+## 🐛 Known Issues
+
+- Role-based access control not fully enforced (planned)
+- Real-time updates use polling (WebSocket planned)
+- Image upload for menu items (coming soon)
+
+## 🔮 Roadmap
+
+- [ ] Real-time WebSocket updates
+- [ ] Payment gateway integration (Razorpay)
+- [ ] Customer loyalty program
+- [ ] Inventory management
+- [ ] Split bill functionality
+- [ ] Table map view
+- [ ] Multi-restaurant support
+- [ ] Mobile app (React Native)
+
+## 📞 Support
+
+For issues and questions:
+- Open an issue on GitHub
+- Check [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)
+
+---
+
+**⭐ Star this repo if you find it useful!**
+
+Made with ❤️ for restaurant operations

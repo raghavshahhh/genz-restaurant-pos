@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   
   // Restaurant settings
@@ -282,15 +280,15 @@ export default function SettingsPage() {
         <div className="bg-gray-50 rounded-lg p-4 space-y-2">
           <div className="flex justify-between">
             <span className="text-sm font-medium text-gray-600">Name:</span>
-            <span className="text-sm font-bold text-gray-900">{session?.user?.name || 'User'}</span>
+            <span className="text-sm font-bold text-gray-900">Admin User</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm font-medium text-gray-600">Email:</span>
-            <span className="text-sm font-bold text-gray-900">{session?.user?.email || 'N/A'}</span>
+            <span className="text-sm font-bold text-gray-900">admin@genz.com</span>
           </div>
           <div className="flex justify-between">
             <span className="text-sm font-medium text-gray-600">Role:</span>
-            <span className="text-sm font-bold text-orange-600">{(session?.user as any)?.role || 'STAFF'}</span>
+            <span className="text-sm font-bold text-orange-600">ADMIN</span>
           </div>
         </div>
       </Card>
