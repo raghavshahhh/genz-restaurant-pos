@@ -23,20 +23,19 @@ export const authOptions: NextAuthOptions = {
           const userCount = await prisma.user.count();
           if (userCount === 0) {
             const { hash } = await import('bcryptjs');
-            const adminPassword = await hash('GenZ2026!', 12);
-            const managerPassword = await hash('Manager2026!', 12);
-            const cashierPassword = await hash('Cashier2026!', 12);
+            const adminPassword = await hash('admin123', 10);
+            const staffPassword = await hash('staff123', 10);
             
+            // Auto-create a default restaurant as well so they don't crash elsewhere
+            const restaurant = await prisma.restaurant.create({
+              data: { id: '00000000-0000-0000-0000-000000000001', name: 'GenZ Restaurant', address: '123 Main Street, New Delhi, India 110001' }
+            });
+
             await prisma.user.createMany({
               data: [
-                { name: 'Admin User', email: 'admin@genzrestaurant.com', password: adminPassword, role: 'ADMIN' },
-                { name: 'Restaurant Manager', email: 'manager@genzrestaurant.com', password: managerPassword, role: 'STAFF' },
-                { name: 'Cashier Staff', email: 'cashier@genzrestaurant.com', password: cashierPassword, role: 'STAFF' },
+                { name: 'Admin User', email: 'admin@genz.com', password: adminPassword, role: 'ADMIN', restaurantId: restaurant.id },
+                { name: 'Staff User', email: 'staff@genz.com', password: staffPassword, role: 'STAFF', restaurantId: restaurant.id },
               ]
-            });
-            // Auto-create a default restaurant as well so they don't crash elsewhere
-            await prisma.restaurant.create({
-              data: { id: 'genz-restaurant', name: 'Gen-Z Restaurant', address: 'Mahipalpur, New Delhi - 110037' }
             });
           }
 

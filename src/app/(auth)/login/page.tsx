@@ -17,9 +17,8 @@ const loginSchema = z.object({
 });
 
 const DEMO_ACCOUNTS = [
-  { role: 'Admin', email: 'admin@genzrestaurant.com', password: 'GenZ2026!' },
-  { role: 'Manager', email: 'manager@genzrestaurant.com', password: 'Manager2026!' },
-  { role: 'Cashier', email: 'cashier@genzrestaurant.com', password: 'Cashier2026!' },
+  { role: 'Admin', email: 'admin@genz.com', password: 'admin123' },
+  { role: 'Staff', email: 'staff@genz.com', password: 'staff123' },
 ];
 
 export default function LoginPage() {

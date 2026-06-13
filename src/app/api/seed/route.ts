@@ -4,15 +4,13 @@ import { hash } from 'bcryptjs';
 
 export async function GET() {
   try {
-    const adminPassword = await hash('GenZ2026!', 12);
-    const managerPassword = await hash('Manager2026!', 12);
-    const cashierPassword = await hash('Cashier2026!', 12);
+    const adminPassword = await hash('admin123', 10);
+    const staffPassword = await hash('staff123', 10);
 
     await prisma.user.createMany({
       data: [
-        { name: 'Admin User', email: 'admin@genzrestaurant.com', password: adminPassword, role: 'ADMIN' },
-        { name: 'Restaurant Manager', email: 'manager@genzrestaurant.com', password: managerPassword, role: 'STAFF' },
-        { name: 'Cashier Staff', email: 'cashier@genzrestaurant.com', password: cashierPassword, role: 'STAFF' },
+        { name: 'Admin User', email: 'admin@genz.com', password: adminPassword, role: 'ADMIN' },
+        { name: 'Staff User', email: 'staff@genz.com', password: staffPassword, role: 'STAFF' },
       ],
       skipDuplicates: true,
     });
