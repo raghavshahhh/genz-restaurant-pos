@@ -19,12 +19,29 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         try {
+          // Auto-seed admin user if database is completely empty
+          const userCount = await prisma.user.count();
+          if (userCount === 0) {
+            const { hash } = await import('bcryptjs');
+            const adminPassword = await hash('GenZ2026!', 12);
+            await prisma.user.create({
+              data: { name: 'Admin User', email: 'admin@genzrestaurant.com', password: adminPassword, role: 'ADMIN' }
+            });
+            // Auto-create a default restaurant as well so they don't crash elsewhere
+            await prisma.restaurant.create({
+              data: { id: 'genz-restaurant', name: 'Gen-Z Restaurant', address: 'Mahipalpur, New Delhi - 110037' }
+            });
+          }
+
           const user = await prisma.user.findUnique({ where: { email: credentials.email } });
           if (!user) return null;
           const isValid = await compare(credentials.password, user.password);
           if (!isValid) return null;
           return { id: user.id, email: user.email, name: user.name, role: user.role } as ExtendedUser;
-        } catch { return null; }
+        } catch (error) { 
+          console.error("Auth error:", error);
+          return null; 
+        }
       }
     })
   ],

@@ -63,7 +63,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
       <Card className="w-full max-w-md p-8 space-y-6 shadow-xl border-0 bg-white/90 backdrop-blur-sm">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 mb-4">
+          <div className="mx-auto flex items-center justify-center w-16 h-16 rounded-full bg-orange-500 bg-gradient-to-r from-orange-500 to-amber-500 mb-4 shadow-lg shadow-orange-500/30">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 36v-3m-3 3h.01M9 17h.01M9 21h.01M15 17h.01M15 21h.01M5.01 17h.01M5.01 21h.01" />
             </svg>
